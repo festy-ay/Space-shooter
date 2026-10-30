@@ -3,14 +3,41 @@ import urllib.request
 import urllib.error
 import pygame
 import sys
+from os.path import join
+
+if not pygame.font.get_init(): pygame.font.init()
+log_font = pygame.font.Font(join('Font', 'DejaVuSans.ttf'), 20)
+log_lines = []
+end_prev_state = ''
 
 # Generated using google.com/ai and modified
-def get_audio(url, audio=True):
+def log(text, display: pygame.Surface, flush=False, log_lines=log_lines):
+    global end_prev_state
+    end = '' if flush else '\n'
+    print(text, end=end, flush=flush) # still goes to the console
+    if flush and not end_prev_state: log_lines.pop()
+    # if end == '\n' and not end_prev_state: log_lines.append('')
+    end_prev_state = end
+    log_lines.append(text)
+    if len(log_lines) > 8: log_lines = log_lines[-8:] # keep only the last 8 lines
+    display.fill('#000000')
+    draw_log(display)
+
+def draw_log(screen: pygame.Surface, log_lines=log_lines):
+    y = 10
+    for line in log_lines:
+        screen.blit(log_font.render(line.strip(), True, (255, 255, 255)), (10, y))
+        y += 24
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: sys.exit()
+    pygame.display.update()
+
+def get_assetPC(url, display):
     # 1. Real raw direct link to the audio file
     RAW_AUDIO_URL = url
     file_name = url.split('/')[-1]
 
-    print(f"Getting {file_name}...")
+    log(f"Getting {file_name}...", display)
 
     # 2. Add a standard User-Agent header so GitHub doesn't reject urllib
     req = urllib.request.Request(
@@ -30,7 +57,8 @@ def get_audio(url, audio=True):
             downloaded = 0
             block_size = 65536  # Download in 64KB chunks
 
-            print(f"Downloading {file_name}...")
+
+            log(f"Downloading {file_name}...", display)
             
             while True:
                 buffer = response.read(block_size)
@@ -48,25 +76,32 @@ def get_audio(url, audio=True):
                     # Create visual progress bar layout: [████████░░░░░░░░] 50.0%
                     bar = '█' * filled_length + '░' * (bar_length - filled_length)
                     # \r forces the cursor to return to the start of the line
-                    print(f"\r[{bar}] {percent*100:.1f}% ({downloaded / (1024*1024):.1f} MB)", end="", flush=True)
+                    log(f"\r[{bar}] {percent*100:.1f}% ({downloaded / (1024*1024):.1f} MB/{total_size / (1024*1024):.1f} MB)", display, flush=True)
                 else:
                     # Fallback if server doesn't provide file size
-                    print(f"\rDownloaded: {downloaded / (1024*1024):.1f} MB...", end="", flush=True)
+                    log(f"\rDownloaded: {downloaded / (1024*1024):.1f} MB...", display, flush=True)
             
-            print(f"\nSuccessfully loaded {file_name} into memeory!")
+            log(f"\nSuccessfully loaded {file_name} into memeory!", display)
             audio_bytes = audio_byte_stream.getvalue()
 
     except urllib.error.URLError as e:
-        print(f"\n❌ Network error occurred: {e.reason}")
-        print("If you have an active network, try closing and reopening your browser and clear its network cache.")
+        log(f"\n❌ Network error occurred: {e.reason}", display)
+        log("If you have an active network, try closing and reopening your browser and clear its network cache.", display)
     except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
+        log(f"\n❌ Unexpected error: {e}", display)
 
-    # 4. If bytes are safely stored in our variable, initialize and play
-    if audio_bytes and audio:        
-        # Wrap bytes inside an in-memory buffer array
-        audio_buffer = io.BytesIO(audio_bytes)
-        
-        # Load into Sound object directly
-        return pygame.mixer.Sound(audio_buffer)
-    elif audio_bytes and not audio: return io.BytesIO(audio_bytes)
+    return io.BytesIO(audio_bytes)
+
+async def get_assets(url: str, display) -> pygame.Surface:
+    file = url.split('/')[-1]
+    try:
+        if sys.platform == "emscripten":
+            import platform
+            log(f'Downloading {file}', display)
+            async with platform.fopen(url, "rb") as source:
+                data = source.read()
+        else: return get_assetPC(url, display)
+        log(f"Downloaded {len(data)} bytes from {url}", display)
+        return io.BytesIO(data)
+    except Exception as e:
+        log(f"Downloading {file} failed!\n{e}", display)
