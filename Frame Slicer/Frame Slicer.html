@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frame Slicer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#eef0f3;--panel:#fff;--ink:#16191f;--mute:#5d6572;--line:#d4d8df;--acc:#2447d6;--accink:#fff;--cut:#e5484d;--off:rgba(22,25,31,.55);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--panel:#1d2128;--ink:#eceef2;--mute:#9aa2af;--line:#323843;--acc:#6f8cff;--accink:#0f1320;--cut:#ff6b6f;--off:rgba(0,0,0,.65)}}
+:root[data-theme="dark"]{--bg:#14171c;--panel:#1d2128;--ink:#eceef2;--mute:#9aa2af;--line:#323843;--acc:#6f8cff;--accink:#0f1320;--cut:#ff6b6f;--off:rgba(0,0,0,.65)}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:26px;margin:0 0 4px;font-weight:600;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:0 0 18px;max-width:60ch}
+.layout{display:grid;grid-template-columns:300px 1fr;gap:16px}
+@media(max-width:820px){.layout{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+.panel h2{font-size:14px;margin:0 0 10px;font-weight:600}
+.drop{display:block;border:2px dashed var(--line);border-radius:8px;padding:22px 12px;text-align:center;color:var(--mute);cursor:pointer}
+.drop.over,.drop:focus-within{border-color:var(--acc);color:var(--ink)}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:12px 0}
+.seg button{flex:1;border:0;background:none;color:var(--ink);padding:7px;font:inherit;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--accink)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+label{display:block;font-size:13px;color:var(--mute)}
+input[type=number],input[type=text]{width:100%;margin-top:3px;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+input:focus-visible,button:focus-visible,.drop:focus-within{outline:2px solid var(--acc);outline-offset:2px}
+.btn{width:100%;padding:10px;border:0;border-radius:6px;background:var(--acc);color:var(--accink);font:inherit;font-weight:600;cursor:pointer;margin-top:6px}
+.btn.alt{background:none;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.stage{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:6px;background:repeating-conic-gradient(var(--line) 0 25%,transparent 0 50%) 0 0/16px 16px}
+.stage canvas{display:block;cursor:pointer}
+.info{color:var(--mute);font-size:13px;margin:8px 0 0}
+.tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:14px}
+.tray button{border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:4px;cursor:pointer;color:var(--mute);font:12px inherit}
+.tray button[aria-pressed="false"]{opacity:.35}
+.tray canvas{width:100%;height:64px;object-fit:contain;display:block;background:repeating-conic-gradient(var(--line) 0 25%,transparent 0 50%) 0 0/10px 10px}
+.prev{display:flex;gap:12px;align-items:center;margin-top:14px}
+.prev canvas{border:1px solid var(--line);border-radius:6px;max-width:120px;max-height:120px}
+.prev label{flex:1}
+#err{color:var(--cut);margin:8px 0 0;min-height:1em}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<h1>Frame Slicer</h1>
+<p class="sub">Cut a sprite sheet or image grid into separate frames. Everything runs in your browser; your image is never uploaded.</p>
+<div class="layout">
+  <section class="panel" aria-label="Settings">
+    <label class="drop" id="drop"><input type="file" id="file" accept="image/*"><span id="dropTxt">Drop an image here, or tap to choose one</span></label>
+    <div class="seg" role="group" aria-label="Slice by">
+      <button id="mGrid" aria-pressed="true">Columns &amp; rows</button>
+      <button id="mSize" aria-pressed="false">Frame size</button>
+    </div>
+    <div class="row" id="gridIn">
+      <label>Columns<input type="number" id="cols" min="1" value="4"></label>
+      <label>Rows<input type="number" id="rows" min="1" value="1"></label>
+    </div>
+    <div class="row" id="sizeIn" hidden>
+      <label>Frame width (px)<input type="number" id="fw" min="1" value="64"></label>
+      <label>Frame height (px)<input type="number" id="fh" min="1" value="64"></label>
+    </div>
+    <div class="row">
+      <label>Outer margin (px)<input type="number" id="mar" min="0" value="0"></label>
+      <label>Gap between (px)<input type="number" id="gap" min="0" value="0"></label>
+    </div>
+    <div class="row">
+      <label>Height offset (px)<input type="number" id="oy" min="0" value="0"></label>
+    </div>
+    <label>File name prefix<input type="text" id="pre" value="frame"></label>
+    <button class="btn" id="zip" disabled>Download all as ZIP</button>
+    <p id="err" role="alert"></p>
+  </section>
+  <section class="panel" aria-label="Preview">
+    <h2>Preview</h2>
+    <div class="stage" id="stage"><canvas id="cv" width="10" height="10"></canvas></div>
+    <p class="info" id="info">Load an image to see the cut lines. Click a frame to leave it out.</p>
+    <div class="prev" id="prev" hidden>
+      <canvas id="anim" width="64" height="64"></canvas>
+      <label>Playback speed: <span id="fpsV">8</span> fps<input type="range" id="fps" min="1" max="30" value="8" style="width:100%"></label>
+    </div>
+    <div class="tray" id="tray"></div>
+  </section>
+</div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var img=null,name='sheet',mode='grid',frames=[],skip={},timer=null,idx=0;
+var cv=$('cv'),ctx=cv.getContext('2d'),anim=$('anim'),actx=anim.getContext('2d');
+var scale=1;
+
+function num(id,min){var v=parseInt($(id).value,10);return isNaN(v)||v<min?min:v}
+
+function compute(){
+  frames=[];$('err').textContent='';
+  if(!img)return;
+  var W=img.naturalWidth,H=img.naturalHeight,m=num('mar',0),g=num('gap',0),oy=num('oy',0),cols,rows,cw,ch;
+  if(mode==='grid'){
+    cols=num('cols',1);rows=num('rows',1);
+    cw=(W-2*m-g*(cols-1))/cols;ch=(H-2*m-oy-g*(rows-1))/rows;
+  }else{
+    cw=num('fw',1);ch=num('fh',1);
+    cols=Math.floor((W-2*m+g)/(cw+g));rows=Math.floor((H-2*m-oy+g)/(ch+g));
+  }
+  if(cols<1||rows<1||cw<1||ch<1){$('err').textContent='These settings leave no room for frames. Reduce the margin, gap or frame size.';return}
+  for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
+    frames.push({x:Math.round(m+c*(cw+g)),y:Math.round(m+oy+r*(ch+g)),w:Math.round(cw),h:Math.round(ch)});
+  }
+  var f=frames[0];
+  $('info').textContent=frames.length+' frames, each about '+f.w+' × '+f.h+' px, from a '+W+' × '+H+' px image. Click a frame to leave it out.';
+}
+
+function draw(){
+  if(!img){return}
+  var W=img.naturalWidth,H=img.naturalHeight,avail=Math.max(240,$('stage').clientWidth-2);
+  scale=Math.min(1,avail/W);
+  if(W<avail&&W<400)scale=Math.min(3,avail/W);
+  cv.width=Math.round(W*scale);cv.height=Math.round(H*scale);
+  ctx.imageSmoothingEnabled=scale<1;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(img,0,0,cv.width,cv.height);
+  var cs=getComputedStyle(document.documentElement);
+  var cut=cs.getPropertyValue('--cut').trim(),off=cs.getPropertyValue('--off').trim();
+  ctx.lineWidth=1;ctx.font='11px sans-serif';
+  frames.forEach(function(f,i){
+    var x=f.x*scale,y=f.y*scale,w=f.w*scale,h=f.h*scale;
+    if(skip[i]){ctx.fillStyle=off;ctx.fillRect(x,y,w,h)}
+    ctx.strokeStyle=cut;ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+    if(w>22&&h>16){ctx.fillStyle=cut;ctx.fillText(i+1,x+4,y+13)}
+  });
+}
+
+function slice(f){
+  var c=document.createElement('canvas');c.width=f.w;c.height=f.h;
+  c.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);
+  return c;
+}
+
+function tray(){
+  var t=$('tray');t.innerHTML='';
+  frames.forEach(function(f,i){
+    var b=document.createElement('button');
+    b.setAttribute('aria-pressed',skip[i]?'false':'true');
+    b.setAttribute('aria-label','Frame '+(i+1));
+    var c=slice(f);b.appendChild(c);
+    var s=document.createElement('span');s.textContent=(i+1);b.appendChild(s);
+    b.onclick=function(){toggle(i)};
+    t.appendChild(b);
+  });
+}
+
+function toggle(i){
+  skip[i]=!skip[i];
+  var b=$('tray').children[i];if(b)b.setAttribute('aria-pressed',skip[i]?'false':'true');
+  draw();count();restart();
+}
+
+function count(){
+  var n=frames.filter(function(_,i){return !skip[i]}).length;
+  $('zip').disabled=n===0;
+  $('zip').textContent=n?('Download '+n+' frame'+(n>1?'s':'')+' as ZIP'):'No frames selected';
+}
+
+function restart(){
+  clearInterval(timer);
+  var act=[];frames.forEach(function(f,i){if(!skip[i])act.push(f)});
+  $('prev').hidden=act.length<2;
+  if(act.length<2)return;
+  anim.width=act[0].w;anim.height=act[0].h;idx=0;
+  var fps=parseInt($('fps').value,10);
+  timer=setInterval(function(){
+    var f=act[idx%act.length];
+    actx.clearRect(0,0,anim.width,anim.height);
+    actx.drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);
+    idx++;
+  },1000/fps);
+}
+
+function refresh(keepSkip){
+  if(!keepSkip)skip={};
+  compute();draw();tray();count();restart();
+}
+
+function load(file){
+  if(!file||file.type.indexOf('image/')!==0){$('err').textContent='Please choose an image file (PNG, JPG, GIF, WebP).';return}
+  var url=URL.createObjectURL(file),im=new Image();
+  im.onload=function(){
+    img=im;name=file.name.replace(/\.[^.]+$/,'')||'sheet';
+    $('dropTxt').textContent=file.name+' ('+im.naturalWidth+' × '+im.naturalHeight+'). Tap to change.';
+    $('pre').value=name;
+    refresh(false);
+  };
+  im.onerror=function(){$('err').textContent='That image could not be read.'};
+  im.src=url;
+}
+
+$('file').onchange=function(e){load(e.target.files[0])};
+var drop=$('drop');
+['dragover','dragenter'].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.add('over')})});
+['dragleave','drop'].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.remove('over')})});
+drop.addEventListener('drop',function(e){load(e.dataTransfer.files[0])});
+
+function setMode(m){
+  mode=m;
+  $('mGrid').setAttribute('aria-pressed',m==='grid');$('mSize').setAttribute('aria-pressed',m==='size');
+  $('gridIn').hidden=m!=='grid';$('sizeIn').hidden=m!=='size';
+  refresh(false);
+}
+$('mGrid').onclick=function(){setMode('grid')};
+$('mSize').onclick=function(){setMode('size')};
+['cols','rows','fw','fh','mar','gap','oy'].forEach(function(id){$(id).addEventListener('input',function(){refresh(false)})});
+$('fps').addEventListener('input',function(){$('fpsV').textContent=this.value;restart()});
+
+cv.addEventListener('click',function(e){
+  var r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*(cv.width/r.width)/scale,y=(e.clientY-r.top)*(cv.height/r.height)/scale;
+  for(var i=0;i<frames.length;i++){var f=frames[i];if(x>=f.x&&x<f.x+f.w&&y>=f.y&&y<f.y+f.h){toggle(i);break}}
+});
+window.addEventListener('resize',function(){draw()});
+
+$('zip').onclick=function(){
+  if(typeof JSZip==='undefined'){$('err').textContent='The ZIP library did not load. Check your connection and reload.';return}
+  var z=new JSZip(),pre=($('pre').value||'frame').replace(/[^\w\-]+/g,'_'),jobs=[],n=0,pad=String(frames.length).length;
+  frames.forEach(function(f,i){
+    if(skip[i])return;var k=++n;
+    jobs.push(new Promise(function(res){
+      slice(f).toBlob(function(b){z.file(pre+'_'+String(k).padStart(Math.max(2,pad),'0')+'.png',b);res()},'image/png');
+    }));
+  });
+  $('zip').disabled=true;$('zip').textContent='Building ZIP…';
+  Promise.all(jobs).then(function(){return z.generateAsync({type:'blob'})}).then(function(blob){
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=pre+'_frames.zip';
+    document.body.appendChild(a);a.click();a.remove();count();
+  }).catch(function(){$('err').textContent='Could not build the ZIP.';count()});
+};
+})();
+</script>
+</body>
+</html>

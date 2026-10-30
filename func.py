@@ -32,7 +32,7 @@ def draw_log(screen: pygame.Surface, log_lines=log_lines):
             if event.type == pygame.QUIT: sys.exit()
     pygame.display.update()
 
-def get_assetPC(url, display):
+def get_assets(url, display):
     # 1. Real raw direct link to the audio file
     RAW_AUDIO_URL = url
     file_name = url.split('/')[-1]
@@ -91,17 +91,3 @@ def get_assetPC(url, display):
         log(f"\n❌ Unexpected error: {e}", display)
 
     return io.BytesIO(audio_bytes)
-
-async def get_assets(url: str, display) -> pygame.Surface:
-    file = url.split('/')[-1]
-    try:
-        if sys.platform == "emscripten":
-            import platform
-            log(f'Downloading {file}', display)
-            async with platform.fopen(url, "rb") as source:
-                data = source.read()
-        else: return get_assetPC(url, display)
-        log(f"Downloaded {len(data)} bytes from {url}", display)
-        return io.BytesIO(data)
-    except Exception as e:
-        log(f"Downloading {file} failed!\n{e}", display)
