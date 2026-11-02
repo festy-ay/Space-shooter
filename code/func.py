@@ -1,12 +1,12 @@
 import io
 import urllib.request
 import urllib.error
-import pygame
+from settings import *
 import sys
 from os.path import join
 
 if not pygame.font.get_init(): pygame.font.init()
-log_font = pygame.font.Font(join('Font', 'DejaVuSans.ttf'), 20)
+log_font = pygame.font.Font(join(path,'Font', 'DejaVuSans.ttf'), 20)
 log_lines = []
 end_prev_state = ''
 
@@ -20,17 +20,23 @@ def log(text, display: pygame.Surface, flush=False, log_lines=log_lines):
     end_prev_state = end
     log_lines.append(text)
     if len(log_lines) > 8: log_lines = log_lines[-8:] # keep only the last 8 lines
-    display.fill('#000000')
+    display.overlay.fill('#000000')
     draw_log(display)
 
 def draw_log(screen: pygame.Surface, log_lines=log_lines):
     y = 10
     for line in log_lines:
-        screen.blit(log_font.render(line.strip(), True, (255, 255, 255)), (10, y))
+        screen.overlay.blit(log_font.render(line.strip(), True, (255, 255, 255)), (10, y))
         y += 24
         for event in pygame.event.get():
             if event.type == pygame.QUIT: sys.exit()
-    pygame.display.update()
+
+    screen.overlay_tex.write(pygame.image.tobytes(screen.overlay, "RGBA", True))
+    screen.ctx.enable(moderngl.BLEND)
+    screen.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
+    screen.overlay_tex.use(0)
+    screen.blit_vao.render(moderngl.TRIANGLE_STRIP)
+    pygame.display.flip()
 
 def get_assets(url, display):
     # 1. Real raw direct link to the audio file

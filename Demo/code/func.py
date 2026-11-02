@@ -2,9 +2,10 @@ import io
 import pygame
 from os.path import join
 import platform
+from settings import path
 
 if not pygame.font.get_init(): pygame.font.init()
-log_font = pygame.font.Font(join('Font', 'DejaVuSans.ttf'), 20)
+log_font = pygame.font.Font(join(path, 'Font', 'DejaVuSans.ttf'), 20)
 log_lines = []
 end_prev_state = ''
 
