@@ -10,7 +10,7 @@ import pygame
 
 path = Path(Path(__file__).parent).parent
 
-WINDOW_WIDTH, WINDOW_HEIGHT = 1368, 768
+WINDOW_WIDTH_INIT, WINDOW_HEIGHT_INIT = 1368, 768
 RENDER_SCALE = 1.0      # lower (for example 0.6) if the frame rate is poor; the picture is just stretched
 SCROLL_SPEED = 0.05     # background scroll in screen heights per second
 SHADER_FILE = "space_bg_blend.frag"   # between cartoon and realistic. Others: "space_bg_toon.frag" (full cartoon), "space_bg.frag" (realistic)

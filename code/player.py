@@ -14,7 +14,7 @@ class Player(pygame.sprite.Sprite):
         self.frame_index = 0
         self.image = self.frames[self.frame_index]
         self.rect = self.image.get_frect(center = pos)
-        self.life = 10
+        self.life = 5
 
         # movement
         self.direction = pygame.Vector2()
@@ -52,7 +52,7 @@ class Player(pygame.sprite.Sprite):
         self.direction = self.direction.normalize() if self.direction else self.direction 
 
     def move(self, dt):
-        self.hitbox_rect.x = pygame.mouse.get_pos()[0]
+        self.hitbox_rect.x = pygame.mouse.get_pos()[0] - 30
         self.hitbox_rect.y += self.direction.y * self.speed * dt
         self.rect.center = self.hitbox_rect.midbottom
 
@@ -60,7 +60,7 @@ class Player(pygame.sprite.Sprite):
         # animate
         self.frame_index += 10 * dt
         keys = pygame.key.get_pressed()
-        self.image = self.frames[int(self.frame_index) % len(self.frames)] if not (keys[pygame.K_UP] or keys[pygame.K_LCTRL or keys[pygame.K_w]]) else self.speed_frames[int(self.frame_index) % len(self.speed_frames)]
+        self.image = self.frames[int(self.frame_index) % len(self.frames)] if not (keys[pygame.K_UP] or keys[pygame.K_LCTRL] or keys[pygame.K_w] or pygame.mouse.get_pressed()[2]) else self.speed_frames[int(self.frame_index) % len(self.speed_frames)]
 
     def update(self, dt):
         self.input()
@@ -68,6 +68,7 @@ class Player(pygame.sprite.Sprite):
         self.animate(dt)
         self.laser_timer()
 
+            # alternative logic:
             # self.shoot_timer -= dt
             # if pygame.mouse.get_pressed()[0] and self.shoot_timer <= 0:
             #     .append([ship_x, ship_y - 30])

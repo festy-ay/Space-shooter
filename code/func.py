@@ -10,6 +10,9 @@ log_font = pygame.font.Font(join(path,'Font', 'DejaVuSans.ttf'), 20)
 log_lines = []
 end_prev_state = ''
 
+def clear_log(logs=log_lines):
+    logs.clear()
+
 # Generated using google.com/ai and modified
 def log(text, display: pygame.Surface, flush=False, log_lines=log_lines):
     global end_prev_state
@@ -67,6 +70,9 @@ def get_assets(url, display):
             log(f"Downloading {file_name}...", display)
             
             while True:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT: sys.exit()
+
                 buffer = response.read(block_size)
                 if not buffer:
                     break
