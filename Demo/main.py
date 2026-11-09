@@ -120,7 +120,7 @@ class Game():
                 if pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed()): return
             await asyncio.sleep(0)              # required by pygbag; harmless on desktop
 
-    def setup(self, width=WINDOW_WIDTH):
+    async def setup(self, width=WINDOW_WIDTH):
         """Load the background tile and scale it to the window width (once, at start-up)."""
         tile = pygame.image.load(choice(self.tile_files)).convert()           # convert() makes blitting much faster
         if tile.get_width() != width:
@@ -165,8 +165,9 @@ class Game():
                 while True:
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE): return False
-                        keys = pygame.key.get_just_pressed()
-                        if keys[pygame.K_SPACE]: return True
+                    keys = pygame.key.get_pressed()
+                    if keys[pygame.K_SPACE]: return True
+                    await asyncio.sleep(0)              # required by pygbag; harmless on desktop
 
         collision_sprites = pygame.sprite.spritecollide(self.player, self.orb_sprites, True, pygame.sprite.collide_mask)
         if collision_sprites:
@@ -228,12 +229,13 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
 
 Click anywhere or press space to continue...
     """, self.screen)
+            current_time = pygame.time.get_ticks()
             while not self.running:
                 for event in pygame.event.get():
-                    if pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed()): self.running = True
+                    if pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed()) and pygame.time.get_ticks() - current_time > 2000: self.running = True
                 await asyncio.sleep(0)              # required by pygbag; harmless on desktop
 
-        self.setup(); self.reference_time = pygame.time.get_ticks() / 1000
+        await self.setup(); self.reference_time = pygame.time.get_ticks() / 1000
         while self.running:
             dt = self.clock.tick() / 1000.0
             self.time_spent = pygame.time.get_ticks() / 1000 - self.reference_time
@@ -286,8 +288,9 @@ Player life: {self.player.life}  Player Level: {self.player.level if self.player
 """, True, "#eaff00"), (12, 10))
             self.all_sprites.draw(self.screen)
 
-            if await self.collisions(): return False
-            elif await self.collisions() is False: return True
+            if await self.collisions() == True: return False
+            elif await self.collisions() == False: return True
+            if self.player.life <= 0: return True
 
             pygame.display.flip()
             await asyncio.sleep(0)              # required by pygbag; harmless on desktop
