@@ -1,7 +1,7 @@
 import io
 import urllib.request
 import urllib.error
-from settings import *
+from .settings import *
 import sys
 from os.path import join
 
@@ -58,7 +58,7 @@ def get_assets(url, display):
 
     try:
         # 3. Request data over the network with an explicit timeout limit
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=15) as response:
             # Get the total file size from headers (in bytes)
             total_size = int(response.headers.get('Content-Length', 0))
             
@@ -96,10 +96,10 @@ def get_assets(url, display):
             log(f"\nSuccessfully loaded {file_name} into memeory!", display)
             audio_bytes = audio_byte_stream.getvalue()
 
+        return io.BytesIO(audio_bytes)
+
     except urllib.error.URLError as e:
         log(f"\n❌ Network error occurred: {e.reason}", display)
         log("If you have an active network, try closing and reopening your browser and clear its network cache.", display)
     except Exception as e:
         log(f"\n❌ Unexpected error: {e}", display)
-
-    return io.BytesIO(audio_bytes)

@@ -1,4 +1,4 @@
-from settings import *
+from .settings import *
 
 class CollisionSprites(pygame.sprite.Sprite):
     def __init__(self, pos, surf, groups):
@@ -56,7 +56,7 @@ class Laser(pygame.sprite.Sprite):
         if pygame.time.get_ticks() - self.start_time >= self.lifetime:
             self.kill()
 
-class AnimatedExploaaion(pygame.sprite.Sprite):
+class AnimatedExplosion(pygame.sprite.Sprite):
     def __init__(self, frames, pos, groups):
         super().__init__(groups)
         self.frames = frames

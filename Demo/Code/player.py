@@ -1,4 +1,4 @@
-from settings import *
+from .settings import *
 
 import pygame
 
@@ -6,7 +6,7 @@ import pygame
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, collision_sprites):
         super().__init__(groups)
-        self.frames = [pygame.transform.rotozoom(pygame.image.load(join(path, 'images', 'Spaceship', f'{i + 1}.png')).convert_alpha(), 0, 0.6) for i in range(6)]
+        self.frames = [pygame.transform.rotozoom(pygame.image.load(join(path, 'Images', 'Spaceship', f'{i + 1}.png')).convert_alpha(), 0, 0.6) for i in range(6)]
         self.hitbox_rect = self.get_hit_rect(self.frames[0]).get_frect(midbottom = pos).inflate(-60,0)
         self.mask = pygame.mask.from_surface(self.get_hit_rect(self.frames[0]))
         self.speed_frames = self.frames[3:]
@@ -15,6 +15,7 @@ class Player(pygame.sprite.Sprite):
         self.image = self.frames[self.frame_index]
         self.rect = self.image.get_frect(center = pos)
         self.life = 5
+        self.level = 0
 
         # movement
         self.direction = pygame.Vector2()
@@ -24,7 +25,7 @@ class Player(pygame.sprite.Sprite):
         # cooldowm
         self.can_shoot = True
         self.laser_shoot_time = 0
-        self.cooldown_duration = 400
+        self.cooldown_duration = 600
 
     def laser_timer(self):
         if not self.can_shoot:

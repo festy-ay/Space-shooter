@@ -1,13 +1,17 @@
+import asyncio
 import io
 import pygame
 from os.path import join
 import platform
-from settings import path
+from .settings import path
 
 if not pygame.font.get_init(): pygame.font.init()
 log_font = pygame.font.Font(join(path, 'Font', 'DejaVuSans.ttf'), 20)
 log_lines = []
 end_prev_state = ''
+
+def clear_log(logs=log_lines):
+    logs.clear()
 
 # Generated using google.com/ai and modified
 def log(text, display: pygame.Surface, flush=False, log_lines=log_lines):
@@ -34,9 +38,12 @@ async def get_assets(url: str, display) -> pygame.Surface:
     file = url.split('/')[-1]
     try:
         log(f'Downloading {file}', display)
-        async with platform.fopen(url, "rb") as source:
-            data = source.read()
-        log(f"Downloaded {len(data)} bytes from {url}", display)
-        return io.BytesIO(data)
+        async with asyncio.timeout(50):  # 50-second limit
+            async with platform.fopen(url, "rb") as source:
+                data = source.read()
+            log(f"Downloaded {len(data)} bytes from {url}", display)
+            return io.BytesIO(data)
+    except TimeoutError:
+        log(f"Attempt {file} timed out for {url}", display)
     except Exception as e:
         log(f"Downloading {file} failed!\n{e}", display)

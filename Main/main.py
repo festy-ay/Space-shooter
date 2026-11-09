@@ -1,7 +1,7 @@
-from settings import *
-from player import Player
-from sprites import *
-from func import *
+from Code.settings import *
+from Code.player import Player
+from Code.sprites import *
+from Code.func import *
 
 class Game():
     def __init__(self):
@@ -57,15 +57,16 @@ void main() { fragColor = texture(tex, uv); }
         self.dificulty = 1
         self.accelerated = False
         self.reference_time = 0
-        self.kills = 0
+        self.kills = 0; self.laser_speed = 600
         self.high_score = 0
+        self.next_level = 20
 
         # sprites
         self.all_sprites = pygame.sprite.Group()
         self.meteor_sprites = pygame.sprite.Group()
         self.laser_sprites = pygame.sprite.Group()
         self.orb_sprites = pygame.sprite.Group()
-        
+
         self.player = Player((WINDOW_WIDTH_INIT / 2, WINDOW_HEIGHT_INIT - 30), self.all_sprites, self.meteor_sprites)
         self.meteor_surfs = (
             [pygame.transform.rotozoom(pygame.image.load(join(path, 'images' , 'Meteor', f'0{i+1}.png')).convert_alpha(), 23, 0.8) for i in range(8)],
@@ -87,8 +88,7 @@ void main() { fragColor = texture(tex, uv); }
 
         self.setup()
         self.imports()
-        if hasattr(self, 'laser_surf'): self.laser_surf = self.laser_surf
-        else: self.laser_surf = pygame.Surface((8, 50), pygame.SRCALPHA); self.laser_surf.fill("#f0a0f0")
+        if not hasattr(self, 'laser_surf'): self.laser_surf = pygame.Surface((8, 50), pygame.SRCALPHA); self.laser_surf.fill("#f0a0f0")
         if hasattr(self, 'game_music'): self.game_music.play(-1)
 
         # display about game
@@ -105,13 +105,21 @@ Controls:
 - Press Esc to exit the game
 
 Rules:
--The diffuculty increases every minute and the max difficulty is 9
+-The difficulty increases every minute and the max difficulty is 9
 -The max health of the player is 5
 -Shoot meteors and destroy them to score points
--There are health orb that resemble a blue shining star, they add 1 health to the player,
+-There are health orbs that resembles a blue shining star, they add 1 health to the player,
     they fall slower than meteors when they appear but they are visually hard to recognise
     and can be mistaken for a blue star (part of the shader used as background for the game)
     the main difference is that the healing orb is animated while the shader's blue star isn't
+-When the player level increases, the laser speed also increases
+-The player level increases by destroying meteors and the requred number of meteors to be
+    destroyed to enter the next level is indicated at the top left section of the screen under 'Next Level'
+- The max player level is 10
+
+Note that if you do not start scoring points from difficulty level 1, the laser speed and cooldown would remain
+    slower that it should and the game becomes harder as the difficulty level increses every minute irrespective
+    of the player's own level. Enjoy the Game!
 
 Click anywhere or press space to continue...
 """, self)
@@ -162,9 +170,6 @@ Click anywhere or press space to continue...
             log("Initializing pygame mixer...", self, False)
             pygame.mixer.init()
 
-            self.game_music = self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/game_music.wav')
-            self.game_music.set_volume(0.3)
-
             self.laser_sound = self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/laser.wav')
             self.laser_sound.set_volume(0.5)
 
@@ -173,6 +178,9 @@ Click anywhere or press space to continue...
 
             self.damage_sound = self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/damage.ogg')
             self.damage_sound.set_volume(0.5)
+
+            self.game_music = self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/game_music.wav')
+            self.game_music.set_volume(0.3)
         except Exception as e:
             log(f"Error importing assets: {e}", self, True)
             log("Restart the game to download assetse or continue without some assets...", self, True)
@@ -191,22 +199,22 @@ Click anywhere or press space to continue...
             self.player.life -= 1
 
             if self.player.life == 0:
-                text = pygame.font.Font(join(path,'Font', 'DejaVuSans.ttf'), 70).render('     GAME OVER!!!\nPress space to restart or esc to exit!', True, (255, 150, 150), '#000000')
+                text = pygame.font.Font(join(path,'Font', 'DejaVuSans.ttf'), 70).render('     GAME OVER!!!\nPress space to restart or esc to exit!', True, (255, 150, 150), '#003030')
                 rect = text.get_frect(center = (self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT / 2))
+                pygame.draw.rect(self.overlay, '#003030', rect.inflate(20,15).move(0,-1.5), 0, 20 )
+                self.overlay.blit(text, rect)
+                self.overlay_tex.write(pygame.image.tobytes(self.overlay, "RGBA", True))
+                self.ctx.enable(moderngl.BLEND)
+                self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
+                self.overlay_tex.use(0)
+                self.blit_vao.render(moderngl.TRIANGLE_STRIP)
+                pygame.display.flip()
                 while True:
-                    self.overlay.blit(text, rect)
-                    self.overlay_tex.write(pygame.image.tobytes(self.overlay, "RGBA", True))
-                    self.ctx.enable(moderngl.BLEND)
-                    self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
-                    self.overlay_tex.use(0)
-                    self.blit_vao.render(moderngl.TRIANGLE_STRIP)
-                    pygame.display.flip()
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                             pygame.quit(); sys.exit(); break
                         keys = pygame.key.get_just_pressed()
-                        if keys[pygame.K_SPACE]:
-                            return True
+                        if keys[pygame.K_SPACE]: return True
 
         collision_sprites = pygame.sprite.spritecollide(self.player, self.orb_sprites, True, pygame.sprite.collide_mask)
         if collision_sprites:
@@ -219,24 +227,31 @@ Click anywhere or press space to continue...
             if collided_sprites:
                 laser.kill()
                 self.kills += 1
-                AnimatedExploaaion(self.meteor_explosoin_frames, laser.rect.midtop, self.all_sprites)
+                if self.kills == self.next_level:
+                    new_level = self.player.level + 1
+                    if new_level > self.player.level:
+                        self.player.level = new_level
+                        self.laser_speed = 600 + (self.player.level * 100)
+                        self.player.cooldown_duration -= self.player.level * 10 if self.player.cooldown_duration > 100 else 0
+                        self.next_level += 30 + (self.player.level * 5)
+                AnimatedExplosion(self.meteor_explosoin_frames, laser.rect.midtop, self.all_sprites)
                 if hasattr(self, 'explosion_sound'): self.explosion_sound.play()
 
     def run(self):
         self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+        self.reference_time = pygame.time.get_ticks() / 1000
         while self.running:
             dt = self.clock.tick() / 1000.0
             self.time_spent = pygame.time.get_ticks() / 1000 - self.reference_time
 
             # set game dificulty
-            self.dificulty_ = int(min(9, divmod(1 + int(self.time_spent), 60)[0]))
+            self.dificulty_ = int(min(9, 1 + (self.time_spent // 60)))
             if self.dificulty is not 'max' and self.dificulty_ != self.dificulty:
                 self.dificulty = self.dificulty_
                 self.meteor_time = (self.meteor_time + 100) * 2 / (self.dificulty + 1)
                 pygame.time.set_timer(self.meteor_event, int(self.meteor_time))
                 self.orb_time -= 5000 if self.dificulty < 5 else -10000
                 pygame.time.set_timer(self.orb_event, int(self.orb_time))
-                self.player.cooldown_duration -= self.dificulty * 10 if self.player.cooldown_duration > 100 else 0
                 self.dificulty = self.dificulty if self.dificulty < 9 else 'max'
 
             # check game events
@@ -267,7 +282,7 @@ Click anywhere or press space to continue...
 
             # player shooting
             if (keys[pygame.K_SPACE] or mouse[0]) and self.player.can_shoot:
-                Laser(self.laser_surf, self.player.rect.center, (self.all_sprites, self.laser_sprites), self.player.speed + 200 + min(600, 100 * self.dificulty))
+                Laser(self.laser_surf, self.player.rect.center, (self.all_sprites, self.laser_sprites), self.laser_speed)
                 self.player.can_shoot = False
                 self.player.laser_shoot_time = pygame.time.get_ticks()
                 if hasattr(self, 'laser_sound'): self.laser_sound.play()
@@ -287,11 +302,11 @@ Click anywhere or press space to continue...
 
             # ---- 3. draw the "game" with normal pygame calls on a transparent layer
             self.overlay.fill((0, 0, 0, 0))
-            hud = self.font.render(f"""{self.clock.get_fps():.0f} fps  Player life: {self.player.life}
-Controls: SPACE or Left click to shoot, W Up Arrow or Left Ctrl to accelerate, Press esc to close the game
-Game time: {self.time_spent / 60:.2f}min   Dificulty level: {self.dificulty}
-Score: {self.kills}   High Score {self.high_score}
-""", True, (255, 255, 255, 255))
+            hud = self.font.render(f"""{self.clock.get_fps():.0f} fps   High Score {self.high_score}
+Controls: SPACE or Left Click to shoot; W, Up Arrow, Left Ctrl or Right Click to accelerate, Press esc to close the game
+Game time: {self.time_spent / 60:.2f}mins   Dificulty level: {self.dificulty}   Next Level: {self.next_level} Meteors
+Player life: {self.player.life}  Player Level: {self.player.level if self.player.level != 10 else 'max'}   Score: {self.kills}
+""", True, "#eaff00")
             self.overlay.blit(hud, (12, 10))
             self.all_sprites.draw(self.overlay)
 
@@ -314,12 +329,14 @@ Score: {self.kills}   High Score {self.high_score}
         self.seed = int(sys.argv[1]) if len(sys.argv) > 1 else randrange(1, 2 ** 31 - 1)
         self.bg_prog["seed"].value = self.seed
         self.scroll = [0.0, 0.0]
-        self.reference_time += self.time_spent
+        self.mouse_rel_movement = 0
+        self.reference_time = 0
         self.time_spent = 0.0
         self.dificulty = 1
         self.accelerated = False
-        self.high_score = self.kills
-        self.kills = 0
+        self.high_score = self.kills if self.kills > self.high_score else self.high_score
+        self.kills = 0; self.laser_speed = 600
+        self.next_level = 20
         self.meteor_event = pygame.event.custom_type()
         self.meteor_time = 900
         self.orb_event = pygame.event.custom_type()
