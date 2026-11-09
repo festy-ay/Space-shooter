@@ -14,7 +14,7 @@ The controls include:
 ## Download
 
 Grab the latest game build from the **[Releases Page](../../releases/latest)**.
-Or play the online demo [here](festy-ay.github.io/Space-shooter/)
+Or play the online demo [here](https://festy-ay.github.io/Space-shooter/)
 
 ## Game Resources
 For image resources like the Spaceship, Meteor, Sun and Orb, they were google searched, screenshot from the search page and processed with AI to get the achieved result. Due to licenses and cost of the images, I had to screenshot them online and prompt Gemmini to generate a similar photo, but since I use the free version of Gemmini it couldn't generate images with transparent pixels and neither could it generate frame by frame photos and gave me a spritesheet instead. I prompted claude and it created a website that divides the spritesheet and after divididing it I then used https://www.remove.bg/ and https://www.photoroom.com/tools/background-remover to remove the background of each image before I was able to use them in the game. There are some images that gemmini couldn't generate a new one for me and I had to use the screenshoted format that way, slice it and remove the background.
