@@ -17,7 +17,7 @@ class Game():
         self.IS_WEB = sys.platform == "emscripten"
         pygame.init()
 
-        icon = pygame.image.load(join(path, "icon.png"))
+        icon = pygame.image.load(join(path, "Images", "icon.png"))
         pygame.display.set_icon(icon)
 
         if self.IS_WEB:
