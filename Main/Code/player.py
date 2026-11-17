@@ -6,7 +6,7 @@ import pygame
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, collision_sprites):
         super().__init__(groups)
-        self.frames = [pygame.transform.rotozoom(pygame.image.load(join(path, 'images', 'Spaceship', f'{i + 1}.png')).convert_alpha(), 0, 0.6) for i in range(6)]
+        self.frames = [pygame.transform.rotozoom(pygame.image.load(join(path, 'Images', 'Spaceship', f'{i + 1}.png')).convert_alpha(), 0, 0.6) for i in range(6)]
         self.hitbox_rect = self.get_hit_rect(self.frames[0]).get_frect(midbottom = pos).inflate(-60,0)
         self.mask = pygame.mask.from_surface(self.get_hit_rect(self.frames[0]))
         self.speed_frames = self.frames[3:]
@@ -27,9 +27,9 @@ class Player(pygame.sprite.Sprite):
         self.laser_shoot_time = 0
         self.cooldown_duration = 600
 
-    def laser_timer(self):
+    def laser_timer(self,current_tim ):
         if not self.can_shoot:
-            current_time = pygame.time.get_ticks()
+            current_time = current_tim
             if current_time - self.laser_shoot_time >= self.cooldown_duration:
                 self.can_shoot = True
 
@@ -63,13 +63,13 @@ class Player(pygame.sprite.Sprite):
         keys = pygame.key.get_pressed()
         self.image = self.frames[int(self.frame_index) % len(self.frames)] if not (keys[pygame.K_UP] or keys[pygame.K_LCTRL] or keys[pygame.K_w] or pygame.mouse.get_pressed()[2]) else self.speed_frames[int(self.frame_index) % len(self.speed_frames)]
 
-    def update(self, dt):
+    def update(self, dt, current_time):
         self.input()
         self.move(dt)
         self.animate(dt)
-        self.laser_timer()
+        self.laser_timer(current_time)
 
-            # alternative logic:
+            # alternative logic (not tested):
             # self.shoot_timer -= dt
             # if pygame.mouse.get_pressed()[0] and self.shoot_timer <= 0:
             #     .append([ship_x, ship_y - 30])
