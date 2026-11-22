@@ -4,8 +4,6 @@
 # ]
 # ///
 
-import asyncio
-import pygame
 from Code.settings import *
 from Code.player import Player
 from Code.sprites import *
@@ -130,8 +128,6 @@ void main() { fragColor = texture(tex, uv); }
 
         # display about game
         clear_log()
-        if IS_WEB: log_arg = self.screen
-        else: log_arg = self
         log("""         '__'
 
 
@@ -161,7 +157,7 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
     of the player's own level. Enjoy the Game!
 
 Click anywhere or press space to continue...
-""", log_arg)
+""", self)
         current_time = pygame.time.get_ticks()
         while not self.running:
             for event in pygame.event.get():
@@ -208,28 +204,28 @@ Click anywhere or press space to continue...
             file_type = file_name.split('.')[-1]
             audio, photo = ['wav', 'ogg', '.mp3'], ['png', 'jpeg']
 
-            buffer = await get_assets(url, self.screen)
+            buffer = await get_assets(url, self)
             if hasattr(buffer, "seek"):
                 buffer.seek(0)
             data = buffer.read() if hasattr(buffer, "read") else bytes(buffer)
-            log(f"bytes: {len(data)}", self.screen)
+            log(f"bytes: {len(data)}", self)
 
             path = os.path.join(tempfile.gettempdir(), file_name)
             with open(path, "wb") as f:
                 f.write(data)
-            log(f"saved to {path}", self.screen)
+            log(f"saved to {path}", self)
 
             try:
                 if file_type in audio:
                     return pygame.mixer.Sound(path)
                 elif file_type in photo:
                     surf = pygame.image.load(path)
-                    log(f"image loaded {surf.get_size()}", self.screen)
+                    log(f"image loaded {surf.get_size()}", self)
                     return surf.convert_alpha()
                 else:
                     return io.BytesIO(data)
             except Exception as e:
-                log(f"load failed: {type(e).__name__} {e}", self.screen)
+                log(f"load failed: {type(e).__name__} {e}", self)
                 raise
 
         else:
@@ -244,99 +240,106 @@ Click anywhere or press space to continue...
 
     async def imports(self):
         error = False
-        if self.IS_WEB:
-            try:
-                self.laser_surf = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/images/laser.png')
+        try:
+            self.laser_surf = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/images/laser.png')
+        except Exception as e:
+            log(f'Error importing laser.png: {type(e).__name__}', self); error = True
 
-                # Sounds
-                log("Initializing pygame mixer...", self.screen)
-                pygame.mixer.init()
+        # Sounds
+        log("Initializing pygame mixer...", self, False)
+        pygame.mixer.init()
 
-                self.laser_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/laser.wav')
-                self.laser_sound.set_volume(0.5)
+        try:
+            self.laser_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/laser.wav')
+        except Exception as e:
+            log(f'Error importing laser.wav: {type(e).__name__}', self); error = True
+        else: self.laser_sound.set_volume(0.5)
 
-                self.explosion_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/explosion.wav')
-                self.explosion_sound.set_volume(0.5)
+        try:
+            self.explosion_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/explosion.wav')
+        except Exception as e:
+            log(f'Error importing explosion_sound.wav: {type(e).__name__}', self); error = True
+        else: self.explosion_sound.set_volume(0.5)
 
-                self.damage_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/damage.ogg')
-                self.damage_sound.set_volume(0.5)
+        try:
+            self.damage_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/damage.ogg')
+        except Exception as e:
+            log(f'Error importing damage_sound.ogg: {type(e).__name__}', self); error = True
+        else: self.damage_sound.set_volume(0.5)
 
-                self.game_music = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/game_music.wav')
-                self.game_music.set_volume(0.3)
-            except Exception as e:
-                log(f"Error importing game_music.wav: {type(e).__name__} {e}", self.screen); error = True
-
-        else:
-            try:
-                self.laser_surf = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/images/laser.png')
-            except Exception as e:
-                log(f'Error importing laser.png: {e}', self); error = True
-
-            # Sounds
-            log("Initializing pygame mixer...", self, False)
-            pygame.mixer.init()
-
-            try:
-                self.laser_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/laser.wav')
-                self.laser_sound.set_volume(0.5)
-            except Exception as e:
-                log(f'Error importing laser.wav: {e}', self); error = True
-
-            try:
-                self.explosion_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/explosion.wav')
-                self.explosion_sound.set_volume(0.5)
-            except Exception as e:
-                log(f'Error importing explosion.png: {e}', self); error = True
-
-            try:
-                self.damage_sound = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/damage.ogg')
-                self.damage_sound.set_volume(0.5)
-            except Exception as e:
-                log(f'Error importing damage.ogg: {e}', self); error = True
-
-            try:
-                self.game_music = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/game_music.wav')
-                self.game_music.set_volume(0.3)
-            except Exception as e:
-                log(f"Error importing game_music.wav: {e}", self); error = True
+        try:
+            self.game_music = await self.url_get('https://raw.githubusercontent.com/clear-code-projects/5games/main/space%20shooter/audio/game_music.wav')
+        except Exception as e:
+            log(f"Error importing game_music.wav: {type(e).__name__}", self); error = True
+        else: self.game_music.set_volume(0.3)
 
         if error: log("Restart the game to download assets or continue without some assets...", self)
 
         # After imports, let there be a response before the game starts
-        if self.IS_WEB: log('Click or press space to begin...', self.screen)
-        else: log('Click or press space to begin...', self)
+        log('Click or press space to begin...', self)
         while not self.running:
             for event in pygame.event.get():
                 if not self.IS_WEB and event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE): pygame.quit(); sys.exit()
                 if pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed()): return
             await asyncio.sleep(0.15)              # required by pygbag; harmless on desktop
 
-    def draw_background(self, screen, tile, offset):
-        """Draw the tile scrolled down by `offset` pixels. The tile repeats, so any offset works.
-
-        The tile must be at least as tall as the window (the supplied one is 3x taller)."""
-        tile_h = tile.get_height()
-        y = int(offset) % tile_h
-        screen.blit(tile, (0, y - tile_h))      # the copy above: it fills the top part of the screen
-        if y < screen.get_height():
-            screen.blit(tile, (0, y))           # the copy below: only needed while it is still on screen
-
-    async def pause_game(self):
-        text = self.extra_text_font.render('     GAME PAUSED!!!\nPress \'ENTER\' to resume or esc to exit!', True, (255, 150, 150), '#003030')
-        rect = text.get_frect(center = (self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT / 2))
+    def draw_background(self, dt):
         if self.IS_WEB:
-            pygame.draw.rect(self.screen, '#003030', rect.inflate(20,15).move(0,-1.5), 0, 20 )
-            self.screen.blit(text, rect)
-            pygame.display.flip()
+            """Draw the tile scrolled down by `offset` pixels. The tile repeats, so any offset works.
+
+            The tile must be at least as tall as the window (the supplied one is 3x taller)."""
+            self.offset = (self.offset + self.scroll * dt) % self.tile.get_height()
+            tile_h = self.tile.get_height()
+            y = int(self.offset) % tile_h
+            self.screen.blit(self.tile, (0, y - tile_h))      # the copy above: it fills the top part of the screen
+            if y < self.screen.get_height():
+                self.screen.blit(self.tile, (0, y))           # the copy below: only needed while it is still on screen
+
+            self.all_sprites.draw(self.screen)
+
         else:
-            pygame.draw.rect(self.overlay, '#003030', rect.inflate(20,15).move(0,-1.5), 0, 20 )
+                # ---- 1. run the background shader
+                self.bg_prog["time"].value = self.time_spent / 1000
+                self.bg_prog["scroll"].value = (self.scroll[0], self.scroll[1])
+
+                self.scene_fbo.use()
+                self.ctx.disable(moderngl.BLEND)
+                self.bg_vao.render(moderngl.TRIANGLE_STRIP)
+
+                # ---- 2. stretch it over the window
+                self.ctx.screen.use()
+                self.scene_tex.use(0)
+                self.blit_vao.render(moderngl.TRIANGLE_STRIP)
+
+                # ---- 3. draw the "game" with normal pygame calls on a transparent layer
+                self.overlay.fill((0, 0, 0, 0))
+                self.all_sprites.draw(self.overlay)
+
+    def displayer(
+            self,
+            text: pygame.Surface,
+            rect: pygame.FRect,
+            draw_rect: tuple[pygame.Color, tuple[int,int], tuple[int,int], int, int] | None = None,
+            update: bool = True
+            ):
+        if self.IS_WEB:
+            if draw_rect: pygame.draw.rect(self.screen, draw_rect[0], rect.inflate(*draw_rect[1]).move(*draw_rect[2]), draw_rect[3], draw_rect[4])
+            self.screen.blit(text, rect)
+            if update: pygame.display.flip()
+        else:
+            if draw_rect: pygame.draw.rect(self.overlay, draw_rect[0], rect.inflate(*draw_rect[1]).move(*draw_rect[2]), draw_rect[3], draw_rect[4])
             self.overlay.blit(text, rect)
             self.overlay_tex.write(pygame.image.tobytes(self.overlay, "RGBA", True))
             self.ctx.enable(moderngl.BLEND)
             self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
             self.overlay_tex.use(0)
             self.blit_vao.render(moderngl.TRIANGLE_STRIP)
-            pygame.display.flip()
+            if update: pygame.display.flip()
+
+    async def pause_game(self):
+        text = self.extra_text_font.render('     GAME PAUSED!!!\nPress \'ENTER\' to resume or esc to exit!', True, (255, 150, 150), '#003030')
+        rect = text.get_frect(center = (self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT / 2))
+        self.displayer(text, rect, ('#003030', (20,15), (0,-1.5), 0, 20))
 
         while True:
             for event in pygame.event.get():
@@ -349,7 +352,7 @@ Click anywhere or press space to continue...
                         return
                 if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED): self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
 
-            await asyncio.sleep(0.15)              # required by pygbag; harmless on desktop
+            await asyncio.sleep(0.15)           # required by pygbag; harmless on desktop
 
     def stop_all_audio(self):
         try:
@@ -372,20 +375,8 @@ Click anywhere or press space to continue...
             if self.player.life == 0:
                 text = self.extra_text_font.render('     GAME OVER!!!\nPress space to restart or esc to exit!', True, (255, 150, 150), '#003030')
                 rect = text.get_frect(center = (self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT / 2))
+                self.displayer(text, rect, ('#003030', (20,15), (0,-1.5), 0, 20))
 
-                if self.IS_WEB:
-                    pygame.draw.rect(self.screen, '#003030', rect.inflate(20,15).move(0,-1.5), 0, 20 )
-                    self.screen.blit(text, rect)
-                    pygame.display.flip()
-                else:
-                    pygame.draw.rect(self.overlay, '#003030', rect.inflate(20,15).move(0,-1.5), 0, 20 )
-                    self.overlay.blit(text, rect)
-                    self.overlay_tex.write(pygame.image.tobytes(self.overlay, "RGBA", True))
-                    self.ctx.enable(moderngl.BLEND)
-                    self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
-                    self.overlay_tex.use(0)
-                    self.blit_vao.render(moderngl.TRIANGLE_STRIP)
-                    pygame.display.flip()
                 while True:
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE): return False
@@ -426,9 +417,9 @@ Click anywhere or press space to continue...
             self.time_spent = pygame.time.get_ticks() - self.reference_time
 
             # set game dificulty
-            self.dificulty_ = int(min(9, 1 + ((self.time_spent / 1000) // 60)))
-            if self.dificulty is not 'max' and self.dificulty_ != self.dificulty:
-                self.dificulty = self.dificulty_
+            dificulty_ = int(min(9, 1 + ((self.time_spent / 1000) // 60)))
+            if self.dificulty != 'max' and dificulty_ != self.dificulty:
+                self.dificulty = dificulty_
                 self.meteor_time = (self.meteor_time + 100) * 2 / (self.dificulty + 1)
                 pygame.time.set_timer(self.meteor_event, int(self.meteor_time))
                 self.orb_time -= 5000 if self.dificulty < 5 else -10000
@@ -448,29 +439,24 @@ Click anywhere or press space to continue...
                 if event.type == self.orb_event:
                     x = randint(0, self.WINDOW_WIDTH)
                     Orb(self.orb_frames, (x,-100),  (self.all_sprites, self.orb_sprites))
-                if not self.IS_WEB and event.type == pygame.MOUSEMOTION: self.mouse_rel_movement = event.rel[0]
+                if not self.IS_WEB and self.dificulty == 'max' and event.type == pygame.MOUSEMOTION: self.mouse_rel_movement = event.rel[0]
                 if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED): self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
 
             # set background shader movement
             keys = pygame.key.get_pressed()
             mouse = pygame.mouse.get_pressed()
+            accelerate = keys[pygame.K_UP] or keys[pygame.K_LCTRL] or keys[pygame.K_w] or mouse[2]
             if self.IS_WEB:
-                if (keys[pygame.K_UP] or keys[pygame.K_LCTRL] or keys[pygame.K_w] or mouse[2]) and not self.accelerated:
-                    self.scroll = 500; self.accelerated = True; self.player.speed += 100
-                elif not (keys[pygame.K_UP] or keys[pygame.K_LCTRL] or keys[pygame.K_w] or mouse[2]) and self.accelerated:
-                    self.accelerated = False; self.player.speed -= 100; self.scroll = 220
+                if accelerate and not self.accelerated: self.scroll = 500; self.accelerated = True; self.player.speed += 100
+                elif not accelerate and self.accelerated: self.accelerated = False; self.player.speed -= 100; self.scroll = 220
             else:
-                boost = 15.0 + 40.0 * (1 if (keys[pygame.K_UP] or keys[pygame.K_LCTRL] or keys[pygame.K_w] or mouse[2]) else 0)
-                if (keys[pygame.K_UP] or keys[pygame.K_LCTRL] or keys[pygame.K_w] or mouse[2]) and not self.accelerated:
-                    self.accelerated = True; self.player.speed += 100
-                elif not (keys[pygame.K_UP] or keys[pygame.K_LCTRL] or keys[pygame.K_w] or mouse[2]) and self.accelerated:
-                    self.accelerated = False; self.player.speed -= 100
+                boost = 15.0 + 40.0 * (1 if accelerate else 0)
+                if accelerate and not self.accelerated: self.accelerated = True; self.player.speed += 100
+                elif not accelerate and self.accelerated: self.accelerated = False; self.player.speed -= 100
 
                 self.scroll[1] += SCROLL_SPEED * boost * dt
-                self.scroll[0] += ((1 if self.mouse_rel_movement > 0 else 0) - (1 if self.mouse_rel_movement < 0 else 0)) * dt if self.dificulty is 'max' else 0
+                self.scroll[0] += ((1 if self.mouse_rel_movement > 0 else 0) - (1 if self.mouse_rel_movement < 0 else 0)) * dt if self.dificulty == 'max' else 0
                 self.mouse_rel_movement = 0
-
-            self.all_sprites.update(dt, self.time_spent)
 
             # player shooting
             if (keys[pygame.K_SPACE] or mouse[0]) and self.player.can_shoot:
@@ -479,52 +465,21 @@ Click anywhere or press space to continue...
                 self.player.laser_shoot_time = self.time_spent
                 if hasattr(self, 'laser_sound'): self.laser_sound.play()
 
+            self.all_sprites.update(dt, self.time_spent)
+
+            gmns = await self.collisions()
+            if gmns: return False
+            elif gmns == False: return True
+
             game_text = f"""{self.clock.get_fps():.0f} fps   High Score {self.high_score}
 Controls: SPACE or Left Click to shoot; W, Up Arrow, Left Ctrl or Right Click to accelerate, Press 'ENTER' to pause the game
 Game time: {(self.time_spent / 1000) / 60:.2f}mins   Dificulty level: {self.dificulty}   Next Level: {self.next_level} Meteors
 Player life: {self.player.life}  Player Level: {self.player.level if self.player.level != 10 else 'max'}   Score: {self.kills}
 """
+            self.draw_background(dt)
+            self.displayer(self.font.render(game_text, True, "#eaff00"), (12, 10))
 
-            if self.IS_WEB:
-                self.offset = (self.offset + self.scroll * dt) % self.tile.get_height()
-                self.draw_background(self.screen, self.tile, self.offset)
-
-                # ---- your game goes on top of the background (a tiny ship and self.bullets as a demo)
-                self.screen.blit(self.font.render(game_text, True, "#eaff00"), (12, 10))
-                self.all_sprites.draw(self.screen)
-
-            else:
-                # ---- 1. run the background shader
-                self.bg_prog["time"].value = self.time_spent / 1000
-                self.bg_prog["scroll"].value = (self.scroll[0], self.scroll[1])
-
-                self.scene_fbo.use()
-                self.ctx.disable(moderngl.BLEND)
-                self.bg_vao.render(moderngl.TRIANGLE_STRIP)
-
-                # ---- 2. stretch it over the window
-                self.ctx.screen.use()
-                self.scene_tex.use(0)
-                self.blit_vao.render(moderngl.TRIANGLE_STRIP)
-
-                # ---- 3. draw the "game" with normal pygame calls on a transparent layer
-                self.overlay.fill((0, 0, 0, 0))
-                hud = self.font.render(game_text, True, "#eaff00")
-                self.overlay.blit(hud, (12, 10))
-                self.all_sprites.draw(self.overlay)
-
-                self.overlay_tex.write(pygame.image.tobytes(self.overlay, "RGBA", True))
-                self.ctx.enable(moderngl.BLEND)
-                self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
-                self.overlay_tex.use(0)
-                self.blit_vao.render(moderngl.TRIANGLE_STRIP)
-
-            gmns = await self.collisions()
-            if gmns: return False
-            elif gmns is False: return True
-
-            pygame.display.flip()
-            await asyncio.sleep(0)              # required by pygbag; harmless on desktop
+            await asyncio.sleep(0) # required by pygbag; harmless on desktop
 
     def reset(self):
         self.all_sprites = pygame.sprite.Group()
@@ -566,6 +521,6 @@ async def main():
                 else:
                     pygame.quit(); break
             game.reset()
-            await asyncio.sleep(0.15)
+            await asyncio.sleep(1)
 
 asyncio.run(main())

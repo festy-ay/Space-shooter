@@ -1,7 +1,7 @@
-![Game Loading](loading.png)
-![Game Loading](done_loading.png)
-![Game](game.png)
-![Game](game_f.png)
+![Game Loading](Screenshots/loading.png)
+![Game Loading](Screenshots/done_loading.png)
+![Game](Screenshots/game.png)
+![Game](Screenshots/game_f.png)
 
 This is a space shooter game created using pygame. This game can only be played on a device that accepts mouse and keyboard inputs.
 The full game is now completed and the demo is available to try [here](https://festy-ay.github.io/Space-shooter/) !.
@@ -18,8 +18,8 @@ The controls include:
 Grab the latest game build from the **[Releases Page](../../releases/latest)**.
 Or play the online demo [here](https://festy-ay.github.io/Space-shooter/)
 
-The Linux version of this game was created using pyinstaller on a Linux PC as I use Kubuntu OS, but since I don;t have a windows PC handy nor do I have a windows virtual machine on my PC, I used a github script to get the windows verion of my gmae so it's not tested. Only the Linux version is tested.
-[see the script](/.github/workflows/build-windows.yml)
+The Linux version of this game was created using pyinstaller in a Linux PC as I use Kubuntu OS and the windows version was built in a Windows 10 Virtual Machine.
+Both versions are tested and now work properly on both platforms.
 
 ## Game Resources
 For image resources like the Spaceship, Meteor, Sun, Orb and the game's icon, they were google searched, screenshot from the search page and processed with AI to get the achieved result. Due to licenses and cost of the images, I had to screenshot them online and prompt Gemmini to generate a similar photo, but since I use the free version of Gemmini it couldn't generate images with transparent pixels and neither could it generate frame by frame photos and gave me a spritesheet instead. I prompted claude and it created a website that divides the spritesheet and after divididing it I then used https://www.remove.bg/ and https://www.photoroom.com/tools/background-remover to remove the background of each image before I was able to use them in the game. There are some images that gemmini couldn't generate a new one for me and I had to use the screenshoted format that way, slice it and remove the background.
@@ -30,7 +30,7 @@ They include: [The laser photo](https://github.com/clear-code-projects/5games/bl
 For sound resources, they are all loaded during runtime also due to no licens provided by the source.
 They include all sound files found in: https://github.com/clear-code-projects/5games/tree/refs/heads/main/space%20shooter/audio
 
-The font used in the game is open source (see [DejaVuFont License](/Main/Font/LICENSE)), it's the same font used in both the main and demo build.
+The font used in the game is open source (see [DejaVuFont License](/Main/Font/LICENSE))
 
 Some of the code used in this project are AI generated using [Claude AI](claude.ai) and [Google AI Mode](google.com/ai) then heavily modified by me to get working in the game.
 
@@ -40,19 +40,17 @@ For more info on the shader, [see my chat with Claude](https://claude.ai/share/d
 And plese do not that I have limited knowledge on bias and content sharing online so a comment telling me about anything I shared or said that isn't meant to be so would help 🙏
 
 ## Demo
-![Game Online Demo](Demo.png)
+![Game Online Demo](Screenshots/Demo.png)
 
-The main game's logic and the demo are now together in the same main.py file now. Since it's still the same game the only thing different is some specifiic codes used in their environments to download resources and draw elements. This logic is cleanly seperated with the 'IS_WEB' method in line 17 Game.__init__
+The main game's logic and the demo are now together in the same [Main](Main) folder now!. Since it's still the same game the only thing different is some specific codes used in their environments to download resources and draw elements. This logic is cleanly seperated with the 'IS_WEB' method in line 15 Game.__init__ in [Main/main.py](Main/main.py)
 The Demo was created using pygbag and pushed to guthub for general public.
-For more info on how pygbag works and the library that broke my main game logic forcing me to write an exclusive logic for the demo, [see my chat with Claude](https://claude.ai/share/9b2bacaf-fcfe-47ca-bc5d-cba434f19b72)
-Most of the code used in the demo are AI generated and heavily modifed for use cases.
 You can make your reseach to know how to use pygbag and modify your code for it's use case.
 I particularly had problems creating the demo as I didn't know how to use pygbag and my code kept failing only in the browser.
-One thing that can help there is; instead of using http://localhost:port, use http://127.0.0.1:port (change port to the port you are hosting it on your PC)
+One thing that can help there is; instead of using http://localhost:port, use http://127.0.0.1:port (change port to the port you are hosting it on your PC). This affected my game mainly bacause some resources are downloaded during runtime.
 Also ensure to add 'await asyncio.sleep(0)' to ALL while loop in your code.
 It prevents the browser from crashing and don't let your window be opened for too long without calling pygame.event.get()
 
-As for the background of the demo, I made four long scrollable photos of the shader used for the main game, AI help a lot here. Since moderngl isn't compatible with pygbag to run on the web and there would be issues running GLSL on the web, four repeatable and scrollable photo frames of the shader were created and a random one is selected when the game starts and when you restart the game after losing.
+As for the background of the demo, I made four long scrollable photos of the shader used for the main game, AI helped a lot here. Since moderngl isn't compatible with pygbag to run on the web and there would be issues running GLSL on the web, four repeatable and scrollable photo frames of the shader were created and a random one is selected when the game starts and when you restart the game after losing.
 The files are [here (the one's that end in .png)](/Main/Shader/)
 
 ## Features and Rules
@@ -64,26 +62,34 @@ There is also a healing orb that nearly resembles a blue star from the backgroun
 
 There is also difficulties attached to the game starting from 0 and max of 9, along side player level that is determined by how many meteors have been destroyed since the beginning of the gaming session. As the player level increases, the laser cooldown time reduces and the laser speed increases but is mostly noticable at level 5 and above. So if you start the game from difficulty level 1 and don't score points to upgrade the player level, it becomes very hard once you reach difficulty level 4 or 5 as the difficulty level increases every minute regardless of the player's level!.
 
-As for collisions in the game, the game uses pygame.collidesprite but since it can be hardware intensive, the function states that it would use the mask provided by the sprite if i thas on so masks were generated from certain frames of some sprites and used as the sprite mask for collision. This prevents collision with the player's exhaust fire (which isn't fully captured as the player is locked to the buttom of the display) and meteors and vise versa, so subsiquently you many notice the laser not colliding with the meteor at the edges.
-see the 'mask' attribute of each sprite uder player.py and sprite.py.
+As for collisions in the game, the game uses pygame.collidesprite but since it can be hardware intensive, the function states that it would use the mask provided by the sprite if it has one so masks were generated from certain frames of some sprites and used as the sprite mask for collision. This prevents collision with the player's exhaust fire (which isn't fully captured as the player is locked to the buttom of the display) and meteors and vise versa, so subsiquently you many notice the laser not colliding with the meteor at the edges.
+see the 'mask' attribute of each sprite uder [player.py](Main/Code/player.py) and [sprite.py](Main/Code/sprites.py).
 
-![Pausing Game](game_p.png)
-You can now pause the game by pressing the enter button!.
+![Pausing Game](Screenshots/game_p.png)
+You can now pause the game by pressing the enter (or return) button!.
 
-When I initially added this feature, the game jumped each time I unpaused the game and the fix was to add 'clock.tick()' to the line right before the game is unpaused and it stops jumping (see line 348 Game.pause_game in main.py). I also had to make sure the time in he game is properly in sync and for that, I created the reference time variable that stores the extra time used when the game is paused or events where the game hasn't started yet and also to restart the game. A current time variable then kept this across all sprites and objects.
+When I initially added this feature, the game jumped each time I unpaused the game and the fix was to add 'clock.tick()' to the line right before the game is unpaused and it stops jumping (see line 351 Game.pause_game in main.py). I also had to make sure the time in he game is properly in sync and for that, I created the reference time variable that stores the extra time used when the game is paused or events where the game hasn't started yet and also to restart the game. A current time variable then kept this across all sprites and objects.
+
+Lastly, if a download fails at the beginning of the game, instead of the other downloads also failing, it skips the failed download and proceeds to the other downloads printing out the error that made the initial download fail.
 
 ## Errors
-![Irresponsive window error](Error.png)
+![Irresponsive window error](Screenshots/Error.png)
 
 If your network is really slow and the download takes long to recieve response from the server, I couldn't find a way to call pygame.event.get()
 Once your system sees unattended events on ground then it marks the window as 'Not Responding', same thing happens in the browser.
 Sometimes I used to leave it alone and wait till the network responds or the attempt fails.
 
-![Unfinished Download](error(1).png)
+![Unfinished Download](Screenshots/error(1).png)
 
 I even reduced the timeout from 30 to 15 seconds in the main game version and set a total of 50s download time for the web version and moved the downloading of the game_music (which is the largest) to be the last just to try to fix the problem.
 
 In case of unavailable network or failed downloads a pygame surface is drawn to replace the laser (see line 128 Game.__init__() of [main.py](/Main/main.py)). The game then continues without sound resources.
+
+![Windows version error](Screenshots/Windows%20download%20error.png)
+In the windows version of the game, the download at runtime feature was not working due to network cretificate verification error.
+This error was specific to the windows desktop environment and the main fix was to skip the network certificate verification process. (see get_assets in [func.py](Main/Code/func.py))
+![Error fixed](Screenshots/Windows%20error%20fixed.png)
+Consequently, you'll see the line 'Certificate verification failed, using unverified certificate!' at the beginnig of every download in the windows version.
 
 ## Credits
 I am a learner in pygame but not entirely new to python. I am really happy to have the chance to build a game like this and am satisfied with the result.

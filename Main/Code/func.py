@@ -1,54 +1,41 @@
-import asyncio
+from .settings import path, sys, pygame, join, asyncio
 import io
-import pygame
-from os.path import join
-import platform
-from .settings import *
-import urllib.request
-import urllib.error
-import sys
+
+IS_WEB = sys.platform == "emscripten"
+if not IS_WEB:
+    import urllib.request, urllib.error, ssl
+    from .settings import moderngl
+else: import platform
+
 
 if not pygame.font.get_init(): pygame.font.init()
 log_font = pygame.font.Font(join(path,'Font', 'DejaVuSans.ttf'), 20)
 log_lines = []
 end_prev_state = ''
-IS_WEB = sys.platform == "emscripten"
 
 def clear_log(logs=log_lines):
     logs.clear()
 
 # Generated using google.com/ai and modified
-def log(text, display: pygame.Surface, flush=False, log_lines=log_lines):
+def log(text, display, flush=False, log_lines=log_lines):
     global end_prev_state
     end = '' if flush else '\n'
     print(text, end=end, flush=flush) # still goes to the console
     if flush and not end_prev_state: log_lines.pop()
-    # if end == '\n' and not end_prev_state: log_lines.append('')
     end_prev_state = end
     log_lines.append(text)
-    # if len(log_lines) > 8: log_lines = log_lines[-8:] # keep only the last 8 lines
-    if IS_WEB: display.fill('#000000')
+    if IS_WEB: display.screen.fill('#000000')
     else: display.overlay.fill('#000000')
     draw_log(display)
 
 def draw_log(screen: pygame.Surface, log_lines=log_lines):
     y = 10
     for line in log_lines:
-        if IS_WEB: screen.blit(log_font.render(line.strip(), True, (255, 255, 255)), (10, y))
-        else: screen.overlay.blit(log_font.render(line.strip(), True, (255, 255, 255)), (10, y))
+        screen.displayer(log_font.render(line.strip(), True, (255, 255, 255)), (10, y), update=False)
         y += 24
         for event in pygame.event.get():
             if event.type == pygame.QUIT: sys.exit()
-
-    if IS_WEB:
-        pygame.display.update()
-    else:
-        screen.overlay_tex.write(pygame.image.tobytes(screen.overlay, "RGBA", True))
-        screen.ctx.enable(moderngl.BLEND)
-        screen.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
-        screen.overlay_tex.use(0)
-        screen.blit_vao.render(moderngl.TRIANGLE_STRIP)
-        pygame.display.flip()
+    pygame.display.flip()
 
 async def get_assets(url, display):
     if IS_WEB:
@@ -122,6 +109,50 @@ async def get_assets(url, display):
             return io.BytesIO(audio_bytes)
 
         except urllib.error.URLError as e:
+            # If it fails specifically due to missing Windows PyInstaller certs, bypass it
+            if "CERTIFICATE_VERIFY_FAILED" in str(e.reason):
+                log('Certificate verification failed, using unverified certificate!', display)
+                unverified_context = ssl._create_unverified_context()
+                with urllib.request.urlopen(req, context=unverified_context, timeout=15) as response:
+                    # Get the total file size from headers (in bytes)
+                    total_size = int(response.headers.get('Content-Length', 0))
+                    
+                    audio_byte_stream = io.BytesIO()
+                    downloaded = 0
+                    block_size = 65536  # Download in 64KB chunks
+
+
+                    log(f"Downloading {file_name}...", display)
+                    
+                    while True:
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT: sys.exit()
+
+                        buffer = response.read(block_size)
+                        if not buffer:
+                            break
+                        
+                        downloaded += len(buffer)
+                        audio_byte_stream.write(buffer)
+                        
+                        # Calculate progress bar details if server provided total size
+                        if total_size > 0:
+                            percent = downloaded / total_size
+                            bar_length = 30
+                            filled_length = int(bar_length * percent)
+                            # Create visual progress bar layout: [████████░░░░░░░░] 50.0%
+                            bar = '█' * filled_length + '░' * (bar_length - filled_length)
+                            # \r forces the cursor to return to the start of the line
+                            log(f"\r[{bar}] {percent*100:.1f}% ({downloaded / (1024*1024):.1f} MB/{total_size / (1024*1024):.1f} MB)", display, flush=True)
+                        else:
+                            # Fallback if server doesn't provide file size
+                            log(f"\rDownloaded: {downloaded / (1024*1024):.1f} MB...", display, flush=True)
+                    
+                    log(f"\nSuccessfully loaded {file_name} into memeory!", display)
+                    audio_bytes = audio_byte_stream.getvalue()
+
+                return io.BytesIO(audio_bytes)
+
             log(f"\n❌ Network error occurred: {e.reason}", display)
             log("If you have an active network, try closing and reopening your browser and clear its network cache.", display)
         except Exception as e:

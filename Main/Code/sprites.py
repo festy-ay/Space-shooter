@@ -1,4 +1,4 @@
-from .settings import *
+from .settings import pygame, randint
 
 class Meteor(pygame.sprite.Sprite):
     def __init__(self, frames, pos, groups):
@@ -72,11 +72,11 @@ class LevelUpIndicator(pygame.sprite.Sprite):
         self.image = self.font.render('LEVEL UP!!!', True, self.extra_text_colour)
         self.pos = pygame.display.get_window_size()[0] // 2, pygame.display.get_window_size()[1] // 2
         self.rect = self.image.get_frect(center = self.pos)
-        self.duration = 3000
+        self.duration = 1500
         self.start_time = current_time
 
     def update(self, dt, current_time):
-        self.frame_index += 2 * dt
+        self.frame_index += 8 * dt
         self.extra_text_colour = '#ffff00' if int(self.frame_index) % 2 else '#ff0000'
         self.image = self.font.render('LEVEL UP!!!', True, self.extra_text_colour)
         if current_time - self.start_time >= self.duration:

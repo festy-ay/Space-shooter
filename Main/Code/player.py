@@ -1,7 +1,4 @@
-from .settings import *
-
-import pygame
-
+from .settings import pygame, join, path
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, collision_sprites):
