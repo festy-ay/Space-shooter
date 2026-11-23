@@ -7,7 +7,7 @@ This is a space shooter game created using pygame. This game can only be played 
 The full game is now completed and the demo is available to try [here](https://festy-ay.github.io/Space-shooter/) !.
 
 The controls include:
-    -Cursor position for horizontal position of the spcaeship
+    -Cursor position or 'A'-'D' or Left and Right arrow keys for horizontal position of the spcaeship
     -Space or left click to shoot laser
     -Left Ctrl, W key, Up Arrow Key or Right Click to accelerate
     -Enter (Return) to pause & unpause game
@@ -68,7 +68,11 @@ see the 'mask' attribute of each sprite uder [player.py](Main/Code/player.py) an
 ![Pausing Game](Screenshots/game_p.png)
 You can now pause the game by pressing the enter (or return) button!.
 
-When I initially added this feature, the game jumped each time I unpaused the game and the fix was to add 'clock.tick()' to the line right before the game is unpaused and it stops jumping (see line 351 Game.pause_game in main.py). I also had to make sure the time in he game is properly in sync and for that, I created the reference time variable that stores the extra time used when the game is paused or events where the game hasn't started yet and also to restart the game. A current time variable then kept this across all sprites and objects.
+When I initially added this feature, the game jumped each time I unpaused the game and the fix was to add 'clock.tick()' to the line right before the game is unpaused and it stops jumping (see line 391 & 376 Game.pause_game in main.py). I also had to make sure the time in he game is properly in sync and for that, I created the reference time variable that stores the extra time used when the game is paused or events where the game hasn't started yet and also to restart the game. A current time variable then kept this across all sprites and objects.
+When the game is unpaused, ther is a 3 seconds countdown betfore returning to the game.
+
+![Restarting Game](Screenshots/restart.png)
+When the game is lost and you restart, a loading screen is shown and an intentional 0.5 seconds delay is added.
 
 Lastly, if a download fails at the beginning of the game, instead of the other downloads also failing, it skips the failed download and proceeds to the other downloads printing out the error that made the initial download fail.
 
@@ -83,7 +87,7 @@ Sometimes I used to leave it alone and wait till the network responds or the att
 
 I even reduced the timeout from 30 to 15 seconds in the main game version and set a total of 50s download time for the web version and moved the downloading of the game_music (which is the largest) to be the last just to try to fix the problem.
 
-In case of unavailable network or failed downloads a pygame surface is drawn to replace the laser (see line 128 Game.__init__() of [main.py](/Main/main.py)). The game then continues without sound resources.
+In case of unavailable network or failed downloads a pygame surface is drawn to replace the laser (see line 130 Game.after_init() of [main.py](/Main/main.py)). The game then continues without sound resources.
 
 ![Windows version error](Screenshots/Windows%20download%20error.png)
 In the windows version of the game, the download at runtime feature was not working due to network cretificate verification error.

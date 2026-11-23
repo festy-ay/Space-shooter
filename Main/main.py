@@ -100,7 +100,8 @@ void main() { fragColor = texture(tex, uv); }
         self.laser_sprites = pygame.sprite.Group()
         self.orb_sprites = pygame.sprite.Group()
 
-        self.player = Player((WINDOW_WIDTH_INIT / 2, WINDOW_HEIGHT_INIT - 30), self.all_sprites, self.meteor_sprites)
+        self.player_frames = [pygame.transform.rotozoom(pygame.image.load(join(path, 'Images', 'Spaceship', f'{i + 1}.png')).convert_alpha(), 0, 0.6) for i in range(6)]
+        self.player = Player(self.player_frames, (WINDOW_WIDTH_INIT / 2, WINDOW_HEIGHT_INIT - 30), self.all_sprites, self.meteor_sprites)
         self.meteor_surfs = (
             [pygame.transform.rotozoom(pygame.image.load(join(path, 'Images' , 'Meteor', f'0{i+1}.png')).convert_alpha(), 23, 0.8) for i in range(8)],
             [pygame.transform.rotozoom(pygame.image.load(join(path, 'Images' , 'Meteor', f'0{i+1}.png')).convert_alpha(), 23, 0.9) for i in range(8)],
@@ -119,6 +120,9 @@ void main() { fragColor = texture(tex, uv); }
         pygame.time.set_timer(self.meteor_event, self.meteor_time)
         pygame.time.set_timer(self.orb_event, self.orb_time)
 
+        self.pause_surf = self.extra_text_font.render("     GAME PAUSED!!!\nPress 'ENTER' to resume or esc to exit!", True, (255,150,150), '#003030')
+        self.count_surfs = {n: self.extra_text_font.render(str(n), True, (255,150,150), '#003030') for n in (3, 2, 1)}
+
         if not self.IS_WEB: self.setup()
 
     async def after_init(self):
@@ -127,17 +131,16 @@ void main() { fragColor = texture(tex, uv); }
         if hasattr(self, 'game_music'): self.game_music.play(-1)
 
         # display about game
-        clear_log()
-        log("""         '__'
-
-
-Welcome to Space Shooter by festy-Ay!
+        info = """ 
+____________Welcome to Space Shooter by festy-Ay!____________
 
 Controls:
-- Move the mouse to move the spaceship sideways
+- Move the mouse pointer or use 'A'-'D' or < > arrow keys to move the spaceship sideways
 - Press W, Up Arrow, Left Ctrl or Left Click to accelerate
 - Press Space or Left click to shoot
 - Press Esc to exit the game
+*** NOTE that after using keys to move the spaceship, to use the mouse pointer, you have to 
+move the pointer to where the spaceship is horizontally!!!***
 
 Rules:
 -The difficulty increases every minute and the max difficulty is 9
@@ -155,15 +158,25 @@ Rules:
 Note that if you do not start scoring points from difficulty level 1, the laser speed and cooldown would remain
     slower that it should and the game becomes harder as the difficulty level increses every minute irrespective
     of the player's own level. Enjoy the Game!
+"""
 
-Click anywhere or press space to continue...
-""", self)
         current_time = pygame.time.get_ticks()
+        info_end = '\n\n        Loading.'
+        clear_log()
+        log(info + info_end, self)
+        exp = 100
         while not self.running:
+            if (pygame.time.get_ticks() - current_time > 2000) and 'Loading' in info_end:
+                clear_log(); info_end = '\n\nClick anywhere or press space to continue...'
+                log(info + info_end, self)
+            elif pygame.time.get_ticks() - current_time >= exp and 'Loading' in info_end:
+                exp += 100; clear_log(); info_end += '.'
+                log(info + info_end, self)
             for event in pygame.event.get():
-                if not self.IS_WEB and event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE): pygame.quit(); sys.exit()
-                if pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed()) and (pygame.time.get_ticks() - current_time > 2000): self.running = True; return
-            await asyncio.sleep(0.15)              # required by pygbag; harmless on desktop
+                if not self.IS_WEB and (event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE)): pygame.quit(); sys.exit()
+                if (pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed())) and (pygame.time.get_ticks() - current_time > 2000):
+                    self.clock.tick(); self.running = True; return
+            await asyncio.sleep(0)              # required by pygbag; harmless on desktop
 
     def setup(self, width=WINDOW_WIDTH_INIT):
         if self.IS_WEB:
@@ -202,7 +215,7 @@ Click anywhere or press space to continue...
         if self.IS_WEB:
             file_name = url.split('/')[-1]
             file_type = file_name.split('.')[-1]
-            audio, photo = ['wav', 'ogg', '.mp3'], ['png', 'jpeg']
+            audio, photo = ['wav', 'ogg'], ['png', 'jpeg']
 
             buffer = await get_assets(url, self)
             if hasattr(buffer, "seek"):
@@ -280,24 +293,27 @@ Click anywhere or press space to continue...
         while not self.running:
             for event in pygame.event.get():
                 if not self.IS_WEB and event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE): pygame.quit(); sys.exit()
-                if pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed()): return
-            await asyncio.sleep(0.15)              # required by pygbag; harmless on desktop
+                if pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed()): self.clock.tick(); return
+            await asyncio.sleep(0)              # required by pygbag; harmless on desktop
 
-    def draw_background(self, dt):
+    def draw_background(self, dt, blank: pygame.Color | None = None):
         if self.IS_WEB:
-            """Draw the tile scrolled down by `offset` pixels. The tile repeats, so any offset works.
+            if not blank:
+                """Draw the tile scrolled down by `offset` pixels. The tile repeats, so any offset works.
 
-            The tile must be at least as tall as the window (the supplied one is 3x taller)."""
-            self.offset = (self.offset + self.scroll * dt) % self.tile.get_height()
-            tile_h = self.tile.get_height()
-            y = int(self.offset) % tile_h
-            self.screen.blit(self.tile, (0, y - tile_h))      # the copy above: it fills the top part of the screen
-            if y < self.screen.get_height():
-                self.screen.blit(self.tile, (0, y))           # the copy below: only needed while it is still on screen
+                The tile must be at least as tall as the window (the supplied one is 3x taller)."""
+                self.offset = (self.offset + self.scroll * dt) % self.tile.get_height()
+                tile_h = self.tile.get_height()
+                y = int(self.offset) % tile_h
+                self.screen.blit(self.tile, (0, y - tile_h))      # the copy above: it fills the top part of the screen
+                if y < self.screen.get_height():
+                    self.screen.blit(self.tile, (0, y))           # the copy below: only needed while it is still on screen
 
-            self.all_sprites.draw(self.screen)
+                self.all_sprites.draw(self.screen)
+            else: self.screen.fill(blank)
 
         else:
+            if not blank:
                 # ---- 1. run the background shader
                 self.bg_prog["time"].value = self.time_spent / 1000
                 self.bg_prog["scroll"].value = (self.scroll[0], self.scroll[1])
@@ -314,6 +330,7 @@ Click anywhere or press space to continue...
                 # ---- 3. draw the "game" with normal pygame calls on a transparent layer
                 self.overlay.fill((0, 0, 0, 0))
                 self.all_sprites.draw(self.overlay)
+            else: self.overlay.fill(blank)
 
     def displayer(
             self,
@@ -337,22 +354,41 @@ Click anywhere or press space to continue...
             if update: pygame.display.flip()
 
     async def pause_game(self):
-        text = self.extra_text_font.render('     GAME PAUSED!!!\nPress \'ENTER\' to resume or esc to exit!', True, (255, 150, 150), '#003030')
-        rect = text.get_frect(center = (self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT / 2))
-        self.displayer(text, rect, ('#003030', (20,15), (0,-1.5), 0, 20))
-
-        while True:
+        def poll():   # returns 'quit', 'resume' or None; also drains the timer events
+            result = None
             for event in pygame.event.get():
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE): return True
-                elif event.type == pygame.KEYDOWN:
-                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
-                        if not self.IS_WEB: self.setup()
-                        self.reference_time = pygame.time.get_ticks() - self.time_spent
-                        self.clock.tick()       # this prevents the game from jumping after unpausing it
-                        return
-                if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED): self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    return 'quit'
+                if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    result = 'resume'
+                if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED):
+                    self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+            return result
 
-            await asyncio.sleep(0.15)           # required by pygbag; harmless on desktop
+        # 1. wait for ENTER
+        surf = self.pause_surf
+        rect = surf.get_frect(center=(self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT / 2))
+        self.displayer(surf, rect, ('#003030', (20,15), (0,-1.5), 0, 20))
+        while True:
+            r = poll()
+            if r == 'quit': return True
+            if r == 'resume': break
+            self.clock.tick(30)
+            await asyncio.sleep(0)
+
+        # 2. 3-second countdown
+        end = pygame.time.get_ticks() + 3000
+        while (remaining := end - pygame.time.get_ticks()) > 0:
+            if poll() == 'quit': return True
+            self.draw_background(0)
+            surf = self.count_surfs[(remaining + 999) // 1000]
+            rect = surf.get_frect(center=(self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT / 2))
+            self.displayer(surf, rect, ('#003030', (20,15), (0,-1.5), 0, 20))
+            self.clock.tick(30)
+            await asyncio.sleep(0)
+
+        self.reference_time = pygame.time.get_ticks() - self.time_spent
+        self.clock.tick()          # avoids a dt jump on the first frame after resuming
 
     def stop_all_audio(self):
         try:
@@ -380,10 +416,14 @@ Click anywhere or press space to continue...
                 while True:
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE): return False
-                        elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE: return True
-                        if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED): self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+                        elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                            self.clock.tick()       # this prevents the game from jumping after unpausing it
+                            return True
+                        if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED):
+                            self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+                            self.displayer(text, rect, ('#003030', (20,15), (0,-1.5), 0, 20))
 
-                    await asyncio.sleep(0.15)              # required by pygbag; harmless on desktop
+                    await asyncio.sleep(0)              # required by pygbag; harmless on desktop
 
         collision_sprites = pygame.sprite.spritecollide(self.player, self.orb_sprites, True, pygame.sprite.collide_mask)
         if collision_sprites:
@@ -404,7 +444,7 @@ Click anywhere or press space to continue...
                         self.player.cooldown_duration -= self.player.level * 10 if self.player.cooldown_duration > 100 else 0
                         self.next_level += 30 + (self.player.level * 5)
 
-                        LevelUpIndicator(self.extra_text_font, self.all_sprites, self.time_spent)
+                        LevelUpIndicator(self.extra_text_font, self.all_sprites, self.time_spent, self.player.level)
 
                 AnimatedExplosion(self.meteor_explosoin_frames, laser.rect.midtop, self.all_sprites)
                 if hasattr(self, 'explosion_sound'): self.explosion_sound.play()
@@ -413,7 +453,7 @@ Click anywhere or press space to continue...
         self.setup(); self.reference_time = pygame.time.get_ticks()
         if not self.IS_WEB: self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
         while self.running:
-            dt = self.clock.tick() / 1000
+            dt = min(self.clock.tick(60) / 1000, 0.05)
             self.time_spent = pygame.time.get_ticks() - self.reference_time
 
             # set game dificulty
@@ -485,7 +525,9 @@ Player life: {self.player.life}  Player Level: {self.player.level if self.player
         self.all_sprites = pygame.sprite.Group()
         self.meteor_sprites = pygame.sprite.Group()
         self.laser_sprites = pygame.sprite.Group()
-        self.player = Player((self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT - 30), self.all_sprites, self.meteor_sprites)
+        self.orb_sprites = pygame.sprite.Group()
+
+        self.player = Player(self.player_frames, (self.WINDOW_WIDTH / 2, self.WINDOW_HEIGHT - 30), self.all_sprites, self.meteor_sprites)
         self.running = True
 
         if self.IS_WEB:
@@ -497,15 +539,15 @@ Player life: {self.player.life}  Player Level: {self.player.level if self.player
             self.scroll = [0.0, 0.0]
             self.mouse_rel_movement = 0
 
-        self.time_spent = 0.0
+        self.time_spent = 0
         self.dificulty = 1
         self.accelerated = False
         self.high_score = self.kills if self.kills > self.high_score else self.high_score
         self.kills = 0; self.laser_speed = 600
         self.next_level = 20
-        self.meteor_event = pygame.event.custom_type()
-        self.meteor_time = 900
-        self.orb_event = pygame.event.custom_type()
+        pygame.time.set_timer(self.meteor_event, 0)
+        pygame.time.set_timer(self.orb_event, 0)
+        self.meteor_time = 1100
         self.orb_time = 30000
         pygame.time.set_timer(self.meteor_event, self.meteor_time)
         pygame.time.set_timer(self.orb_event, self.orb_time)
@@ -520,7 +562,11 @@ async def main():
                     game.stop_all_audio(); game.screen.fill("#000000"); pygame.display.update(); break
                 else:
                     pygame.quit(); break
+            game.draw_background(None, "#000000"); game.displayer(game.extra_text_font.render('Loading...', True, '#ffff00'), (game.WINDOW_WIDTH // 2, game.WINDOW_HEIGHT // 2))
             game.reset()
-            await asyncio.sleep(1)
+            if not game.IS_WEB:
+                current_time = pygame.time.get_ticks()
+                while not pygame.time.get_ticks() - current_time >= 500: pass
+            await asyncio.sleep(0.5)
 
 asyncio.run(main())

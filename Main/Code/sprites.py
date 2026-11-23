@@ -40,6 +40,7 @@ class Laser(pygame.sprite.Sprite):
     def __init__(self, surf, pos, groups, speed, current_time):
         super().__init__(groups)
         self.image = surf
+        self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_frect(midbottom = pos)
         self.start_time = current_time
         self.lifetime = 3000
@@ -64,9 +65,10 @@ class AnimatedExplosion(pygame.sprite.Sprite):
         except IndexError: self.kill()
 
 class LevelUpIndicator(pygame.sprite.Sprite):
-    def __init__(self, font, groups, current_time):
+    def __init__(self, font, groups, current_time, level):
         super().__init__(groups)
         self.font = font
+        self.text = f'LEVEL {level}!!!'
         self.extra_text_colour = '#ff0000'
         self.frame_index = 0
         self.image = self.font.render('LEVEL UP!!!', True, self.extra_text_colour)
@@ -78,6 +80,6 @@ class LevelUpIndicator(pygame.sprite.Sprite):
     def update(self, dt, current_time):
         self.frame_index += 8 * dt
         self.extra_text_colour = '#ffff00' if int(self.frame_index) % 2 else '#ff0000'
-        self.image = self.font.render('LEVEL UP!!!', True, self.extra_text_colour)
+        self.image = self.font.render(self.text, True, self.extra_text_colour)
         if current_time - self.start_time >= self.duration:
             self.kill()

@@ -1,9 +1,9 @@
-from .settings import pygame, join, path
+from .settings import pygame
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, collision_sprites):
+    def __init__(self, frames, pos, groups, collision_sprites):
         super().__init__(groups)
-        self.frames = [pygame.transform.rotozoom(pygame.image.load(join(path, 'Images', 'Spaceship', f'{i + 1}.png')).convert_alpha(), 0, 0.6) for i in range(6)]
+        self.frames = frames
         self.hitbox_rect = self.get_hit_rect(self.frames[0]).get_frect(midbottom = pos).inflate(-60,0)
         self.mask = pygame.mask.from_surface(self.get_hit_rect(self.frames[0]))
         self.speed_frames = self.frames[3:]
@@ -13,6 +13,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_frect(center = pos)
         self.life = 5
         self.level = 0
+        self.mouse = False
 
         # movement
         self.direction = pygame.Vector2()
@@ -47,11 +48,15 @@ class Player(pygame.sprite.Sprite):
     def input(self):
         keys = pygame.key.get_pressed()
         self.direction.x = int(keys[pygame.K_RIGHT] or keys[pygame.K_d]) - int(keys[pygame.K_LEFT] or keys[pygame.K_a]) # mx, _ = pygame.mouse.get_pos()
-        self.direction = self.direction.normalize() if self.direction else self.direction 
+        self.direction = self.direction.normalize() if self.direction else self.direction
 
     def move(self, dt):
-        self.hitbox_rect.x = pygame.mouse.get_pos()[0] - 30
-        self.hitbox_rect.y += self.direction.y * self.speed * dt
+        mouse = pygame.mouse.get_pos()[0] - 30
+        if self.direction.x: self.mouse = False
+        elif not self.direction.x and round(mouse*2, -2) == round(self.rect.x * 2, -2): self.mouse = True
+        if self.mouse: self.hitbox_rect.x = mouse
+        else: self.hitbox_rect.x += self.direction.x * self.speed * dt
+        self.hitbox_rect.x = min(self.hitbox_rect.x, pygame.display.get_window_size()[0]) if self.hitbox_rect.x > 0 else 0
         self.rect.center = self.hitbox_rect.midbottom
 
     def animate(self, dt):
