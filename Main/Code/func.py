@@ -21,21 +21,22 @@ def log(text, display, flush=False, log_lines=log_lines):
     global end_prev_state
     end = '' if flush else '\n'
     print(text, end=end, flush=flush) # still goes to the console
-    if flush and not end_prev_state: log_lines.pop()
+    if flush and not end_prev_state:
+        try: log_lines.pop()
+        except IndexError: pass
     end_prev_state = end
     log_lines.append(text)
-    if IS_WEB: display.screen.fill('#000000')
-    else: display.overlay.fill('#000000')
+    display.layer.fill('#000000')
     draw_log(display)
 
 def draw_log(screen: pygame.Surface, log_lines=log_lines):
     y = 10
     for line in log_lines:
-        screen.displayer(log_font.render(line.strip(), True, (255, 255, 255)), (10, y), update=False)
+        screen.layer.blit(log_font.render(line.strip(), True, (255, 255, 255)), (10, y))
         y += 24
         for event in pygame.event.get():
             if event.type == pygame.QUIT: sys.exit()
-    pygame.display.flip()
+    screen.displayer(pygame.Surface((0,0)), (0,0))
 
 async def get_assets(url, display):
     if IS_WEB:

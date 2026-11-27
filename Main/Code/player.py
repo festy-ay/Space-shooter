@@ -1,10 +1,10 @@
 from .settings import pygame
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, frames, pos, groups, collision_sprites):
+    def __init__(self, frames: list[pygame.Surface], pos, groups, collision_sprites):
         super().__init__(groups)
         self.frames = frames
-        self.hitbox_rect = self.get_hit_rect(self.frames[0]).get_frect(midbottom = pos).inflate(-60,0)
+        # self.hitbox_rect = self.get_hit_rect(self.frames[0]).get_frect(midbottom = pos).inflate(-60,0)
         self.mask = pygame.mask.from_surface(self.get_hit_rect(self.frames[0]))
         self.speed_frames = self.frames[3:]
         self.frames = self.frames[:3]
@@ -31,7 +31,7 @@ class Player(pygame.sprite.Sprite):
             if current_time - self.laser_shoot_time >= self.cooldown_duration:
                 self.can_shoot = True
 
-    def get_hit_rect(self, original_surface):
+    def get_hit_rect(self, original_surface: pygame.Surface) -> pygame.Surface:
         # 1. Get the dimensions of your original surface
         width = original_surface.get_width()
         full_height = original_surface.get_height()
@@ -51,13 +51,15 @@ class Player(pygame.sprite.Sprite):
         self.direction = self.direction.normalize() if self.direction else self.direction
 
     def move(self, dt):
-        mouse = pygame.mouse.get_pos()[0] - 30
+        mouse = pygame.mouse.get_pos()[0]# - 30
         if self.direction.x: self.mouse = False
-        elif not self.direction.x and round(mouse*2, -2) == round(self.rect.x * 2, -2): self.mouse = True
-        if self.mouse: self.hitbox_rect.x = mouse
-        else: self.hitbox_rect.x += self.direction.x * self.speed * dt
-        self.hitbox_rect.x = min(self.hitbox_rect.x, pygame.display.get_window_size()[0]) if self.hitbox_rect.x > 0 else 0
-        self.rect.center = self.hitbox_rect.midbottom
+        elif round(mouse * 2, -2) == round(self.rect.x * 2, -2): self.mouse = True
+        if self.mouse: self.rect.centerx = mouse
+        else: self.rect.centerx += self.direction.x * self.speed * dt
+        # self.hitbox_rect.x = min(self.hitbox_rect.x, pygame.display.get_window_size()[0]) if self.hitbox_rect.x > 0 else 0
+        # self.rect.centerx = self.hitbox_rect.midbottom[0]
+        self.rect.centerx = max(0, min(self.rect.centerx, pygame.display.get_window_size()[0]))
+
 
     def animate(self, dt):
         # animate

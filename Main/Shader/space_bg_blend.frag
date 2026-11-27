@@ -10,6 +10,7 @@ in vec2 uv;
 out vec4 fragColor;
 
 uniform vec2  resolution;
+uniform float unit;      // pixels per shader unit; fixed, so a bigger window shows more instead of zooming
 uniform float time;
 uniform int   seed;
 uniform vec2  scroll;
@@ -151,7 +152,7 @@ void star_layer(vec2 P, float cell, float chance, float size_px, uint salt, inou
 
     vec2 pos = vec2(0.3) + 0.4 * vec2(rnd(id, salt + 1u), rnd(id, salt + 2u));
     vec2 dv = (fr - pos) * cell;
-    float px = 1.0 / resolution.y;
+    float px = 1.0 / unit;
     float r = size_px * px * (0.55 + 0.45 * rnd(id, salt + 4u));
 
     float shape;
@@ -175,7 +176,7 @@ void star_layer(vec2 P, float cell, float chance, float size_px, uint salt, inou
 void big_stars(vec2 P, inout vec3 col) {
     const float CELL = 0.9;
     ivec2 id0 = ivec2(floor(P / CELL));
-    float px = 1.0 / resolution.y;
+    float px = 1.0 / unit;
 
     for (int j = -1; j <= 1; j++) {
         for (int i = -1; i <= 1; i++) {
@@ -316,8 +317,8 @@ void planets(vec2 P, inout vec3 col) {
     float dist = length(x);
     if (dist > (has_ring ? 2.05 : 1.45)) return;
 
-    float aa = 1.5 / (resolution.y * r);
-    float ow = toon * 3.0 / (resolution.y * r);                // outline thickness: 0 to 3 pixels
+    float aa = 1.5 / (unit * r);
+    float ow = toon * 3.0 / (unit * r);                // outline thickness: 0 to 3 pixels
     float la = 6.2831853 * rnd(id, 206u);
     vec3 L = normalize(vec3(cos(la) * 0.85, sin(la) * 0.85, 0.5));
     vec2 L2 = L.xy / length(L.xy);
@@ -351,7 +352,7 @@ void planets(vec2 P, inout vec3 col) {
 
     // ----- atmosphere glow outside the planet: soft when realistic, a flat band when cartoon
     if (has_atmo && dist >= 1.0) {
-        float gw = 7.0 / (resolution.y * r);
+        float gw = 7.0 / (unit * r);
         float flat_band = 1.0 - smoothstep(1.0 + ow + gw - aa, 1.0 + ow + gw + aa, dist);
         float soft_glow = exp(-(dist - 1.0) * 12.0) * (1.0 - smoothstep(1.1, 1.45, dist));
         float glow = mix(soft_glow * 0.9, flat_band * 0.45, toon);
@@ -400,7 +401,7 @@ void planets(vec2 P, inout vec3 col) {
 void main() {
     SEED = uint(seed);
     S = mix(6.0, 1.0, toon);
-    vec2 p = (gl_FragCoord.xy - 0.5 * resolution) / resolution.y;
+    vec2 p = (gl_FragCoord.xy - 0.5 * resolution) / unit;
 
     vec3 col = nebula(p + scroll * 0.10);
 

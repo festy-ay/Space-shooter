@@ -15,26 +15,14 @@ class Meteor(pygame.sprite.Sprite):
         self.image = self.frames[int(self.frame_index) % len(self.frames)]
         self.rect.centery += 1 * self.speed * dt
         
-        if self.rect.bottom < 0:
+        if self.rect.top > pygame.display.get_window_size()[1]:
             self.kill()
 
-class Orb(pygame.sprite.Sprite):
+class Orb(Meteor):
     def __init__(self, frames, pos, groups):
-        super().__init__(groups)
-        self.frames = frames
-        self.frame_index = 0
-        self.image = self.frames[self.frame_index]
+        super().__init__(frames, pos, groups)
         self.mask = pygame.mask.from_surface(self.frames[2])
-        self.rect = self.image.get_frect(center = pos)
         self.speed = randint(100,250)
-
-    def update(self, dt, _):
-        self.frame_index += 8 * dt
-        self.image = self.frames[int(self.frame_index) % len(self.frames)]
-        self.rect.centery += 1 * self.speed * dt
-        
-        if self.rect.bottom < 0:
-            self.kill()
 
 class Laser(pygame.sprite.Sprite):
     def __init__(self, surf, pos, groups, speed, current_time):
@@ -64,22 +52,39 @@ class AnimatedExplosion(pygame.sprite.Sprite):
         try: self.image = self.frames[int(self.frame_index)]
         except IndexError: self.kill()
 
-class LevelUpIndicator(pygame.sprite.Sprite):
-    def __init__(self, font, groups, current_time, level):
+class WelcomeDisplay(pygame.sprite.Sprite):
+    def __init__(self, groups, frames, current_time, pos):
         super().__init__(groups)
-        self.font = font
-        self.text = f'LEVEL {level}!!!'
-        self.extra_text_colour = '#ff0000'
+        self.frames = frames
         self.frame_index = 0
-        self.image = self.font.render('LEVEL UP!!!', True, self.extra_text_colour)
-        self.pos = pygame.display.get_window_size()[0] // 2, pygame.display.get_window_size()[1] // 2
-        self.rect = self.image.get_frect(center = self.pos)
+        self.image = self.frames[self.frame_index]
+        self.rect = self.image.get_frect(center = pos)
         self.duration = 1500
         self.start_time = current_time
 
     def update(self, dt, current_time):
         self.frame_index += 8 * dt
-        self.extra_text_colour = '#ffff00' if int(self.frame_index) % 2 else '#ff0000'
-        self.image = self.font.render(self.text, True, self.extra_text_colour)
+        self.image = self.frames[int(self.frame_index) % len(self.frames)]
         if current_time - self.start_time >= self.duration:
             self.kill()
+
+class LevelUpIndicator(WelcomeDisplay):
+    def __init__(self, font, groups, current_time, level, pos):
+        self.font = font
+        text = f'LEVEL {level}!!!'
+        frames = [
+            font.render(text, True, '#ff0000'),
+            font.render(text, True, '#ffff00'),
+        ]
+        super().__init__(groups, frames, current_time, pos)
+    #     self.frame_index = 0
+    #     self.image = self.frames[self.frame_index]
+    #     self.rect = self.image.get_frect(center = pos)
+    #     self.duration = 1500
+    #     self.start_time = current_time
+
+    # def update(self, dt, current_time):
+    #     self.frame_index += 8 * dt
+    #     self.image = self.frames[int(self.frame_index) % len(self.frames)]
+    #     if current_time - self.start_time >= self.duration:
+    #         self.kill()

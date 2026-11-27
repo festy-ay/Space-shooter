@@ -101,6 +101,7 @@ void main() { fragColor = texture(tex, uv); }
         self.orb_sprites = pygame.sprite.Group()
 
         self.player_frames = [pygame.transform.rotozoom(pygame.image.load(join(path, 'Images', 'Spaceship', f'{i + 1}.png')).convert_alpha(), 0, 0.6) for i in range(6)]
+        self.player_life_frames = pygame.transform.rotozoom(pygame.image.load(join(path, 'Images', 'heart.png')).convert_alpha(), 0, 0.2)
         self.player = Player(self.player_frames, (WINDOW_WIDTH_INIT / 2, WINDOW_HEIGHT_INIT - 30), self.all_sprites, self.meteor_sprites)
         self.meteor_surfs = (
             [pygame.transform.rotozoom(pygame.image.load(join(path, 'Images' , 'Meteor', f'0{i+1}.png')).convert_alpha(), 23, 0.8) for i in range(8)],
@@ -122,8 +123,17 @@ void main() { fragColor = texture(tex, uv); }
 
         self.pause_surf = self.extra_text_font.render("     GAME PAUSED!!!\nPress 'ENTER' to resume or esc to exit!", True, (255,150,150), '#003030')
         self.count_surfs = {n: self.extra_text_font.render(str(n), True, (255,150,150), '#003030') for n in (3, 2, 1)}
+        self.welcome_frame = [
+            pygame.transform.rotozoom(pygame.image.load(join(path, 'Images', 'festy_frame2.png')).convert_alpha(), 0, 1.2),
+            pygame.transform.rotozoom(pygame.image.load(join(path, 'Images', 'festy_frame1.png')).convert_alpha(), 0, 1.2)
+        ]
 
         if not self.IS_WEB: self.setup()
+
+    @property
+    def layer(self):
+        """The surface that normal pygame drawing goes onto: the screen on web, the overlay on desktop."""
+        return self.screen if self.IS_WEB else self.overlay
 
     async def after_init(self):
         await self.imports()
@@ -163,15 +173,15 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
         current_time = pygame.time.get_ticks()
         info_end = '\n\n        Loading.'
         clear_log()
-        log(info + info_end, self)
+        log(info + info_end, self, True)
         exp = 100
         while not self.running:
             if (pygame.time.get_ticks() - current_time > 2000) and 'Loading' in info_end:
                 clear_log(); info_end = '\n\nClick anywhere or press space to continue...'
-                log(info + info_end, self)
+                log(info + info_end, self, True)
             elif pygame.time.get_ticks() - current_time >= exp and 'Loading' in info_end:
                 exp += 100; clear_log(); info_end += '.'
-                log(info + info_end, self)
+                log(info + info_end, self, True)
             for event in pygame.event.get():
                 if not self.IS_WEB and (event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE)): pygame.quit(); sys.exit()
                 if (pygame.key.get_pressed()[pygame.K_SPACE] or any(pygame.mouse.get_pressed())) and (pygame.time.get_ticks() - current_time > 2000):
@@ -190,7 +200,10 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
         else:
             # ---------------------------------------------------------------- render targets
             self.WINDOW_WIDTH, self.WINDOW_HEIGHT = pygame.display.get_window_size()
-            rw, rh = int(self.WINDOW_WIDTH * RENDER_SCALE), int(self.WINDOW_HEIGHT * RENDER_SCALE)
+            # never render more shader pixels than the original window had
+            scale = min(RENDER_SCALE, (SHADER_MAX_PIXELS / (self.WINDOW_WIDTH * self.WINDOW_HEIGHT)) ** 0.5)
+            rw, rh = max(1, int(self.WINDOW_WIDTH * scale)), max(1, int(self.WINDOW_HEIGHT * scale))
+            # rw, rh = int(self.WINDOW_WIDTH * RENDER_SCALE), int(self.WINDOW_HEIGHT * RENDER_SCALE)
 
             # Free the old GPU objects first (they don't exist on the first call)
             for name in ("scene_fbo", "scene_tex", "overlay_tex"):
@@ -207,6 +220,7 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
             self.overlay_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
 
             self.bg_prog["resolution"].value = (rw, rh)
+            self.bg_prog["unit"].value = SHADER_UNIT * scale
 
             # Last line: tell the real window's framebuffer its new size
             self.ctx.screen.viewport = (0, 0, self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
@@ -336,13 +350,12 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
             self,
             text: pygame.Surface,
             rect: pygame.FRect,
-            draw_rect: tuple[pygame.Color, tuple[int,int], tuple[int,int], int, int] | None = None,
-            update: bool = True
+            draw_rect: tuple[pygame.Color, tuple[int,int], tuple[int,int], int, int] | None = None
             ):
         if self.IS_WEB:
             if draw_rect: pygame.draw.rect(self.screen, draw_rect[0], rect.inflate(*draw_rect[1]).move(*draw_rect[2]), draw_rect[3], draw_rect[4])
             self.screen.blit(text, rect)
-            if update: pygame.display.flip()
+            pygame.display.flip()
         else:
             if draw_rect: pygame.draw.rect(self.overlay, draw_rect[0], rect.inflate(*draw_rect[1]).move(*draw_rect[2]), draw_rect[3], draw_rect[4])
             self.overlay.blit(text, rect)
@@ -351,7 +364,7 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
             self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
             self.overlay_tex.use(0)
             self.blit_vao.render(moderngl.TRIANGLE_STRIP)
-            if update: pygame.display.flip()
+            pygame.display.flip()
 
     async def pause_game(self):
         def poll():   # returns 'quit', 'resume' or None; also drains the timer events
@@ -362,7 +375,7 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
                 if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     result = 'resume'
                 if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED):
-                    self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+                    self.setup(); self.player.rect.centery = self.WINDOW_HEIGHT - 30
             return result
 
         # 1. wait for ENTER
@@ -420,7 +433,7 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
                             self.clock.tick()       # this prevents the game from jumping after unpausing it
                             return True
                         if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED):
-                            self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+                            self.setup(); self.player.rect.centery = self.WINDOW_HEIGHT - 30
                             self.displayer(text, rect, ('#003030', (20,15), (0,-1.5), 0, 20))
 
                     await asyncio.sleep(0)              # required by pygbag; harmless on desktop
@@ -444,14 +457,14 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
                         self.player.cooldown_duration -= self.player.level * 10 if self.player.cooldown_duration > 100 else 0
                         self.next_level += 30 + (self.player.level * 5)
 
-                        LevelUpIndicator(self.extra_text_font, self.all_sprites, self.time_spent, self.player.level)
+                        LevelUpIndicator(self.extra_text_font, self.all_sprites, self.time_spent, self.player.level, (self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2))
 
                 AnimatedExplosion(self.meteor_explosoin_frames, laser.rect.midtop, self.all_sprites)
                 if hasattr(self, 'explosion_sound'): self.explosion_sound.play()
 
     async def run(self):
         self.setup(); self.reference_time = pygame.time.get_ticks()
-        if not self.IS_WEB: self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+        if not self.IS_WEB: self.player.rect.centery = self.WINDOW_HEIGHT - 30
         while self.running:
             dt = min(self.clock.tick(60) / 1000, 0.05)
             self.time_spent = pygame.time.get_ticks() - self.reference_time
@@ -480,7 +493,8 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
                     x = randint(0, self.WINDOW_WIDTH)
                     Orb(self.orb_frames, (x,-100),  (self.all_sprites, self.orb_sprites))
                 if not self.IS_WEB and self.dificulty == 'max' and event.type == pygame.MOUSEMOTION: self.mouse_rel_movement = event.rel[0]
-                if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED): self.setup(); self.player.hitbox_rect.y = pygame.display.get_window_size()[1] - 170
+                if not self.IS_WEB and event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED):
+                    self.setup(); self.player.rect.centery = self.WINDOW_HEIGHT - 30
 
             # set background shader movement
             keys = pygame.key.get_pressed()
@@ -514,9 +528,12 @@ Note that if you do not start scoring points from difficulty level 1, the laser 
             game_text = f"""{self.clock.get_fps():.0f} fps   High Score {self.high_score}
 Controls: SPACE or Left Click to shoot; W, Up Arrow, Left Ctrl or Right Click to accelerate, Press 'ENTER' to pause the game
 Game time: {(self.time_spent / 1000) / 60:.2f}mins   Dificulty level: {self.dificulty}   Next Level: {self.next_level} Meteors
-Player life: {self.player.life}  Player Level: {self.player.level if self.player.level != 10 else 'max'}   Score: {self.kills}
+Player Level: {self.player.level if self.player.level != 10 else 'max'}   Score: {self.kills}
 """
             self.draw_background(dt)
+            x = (self.WINDOW_WIDTH // 2) - (self.player.life * 10)
+            for i in range(self.player.life):
+                self.layer.blit(self.player_life_frames, (x + (i * 25), self.WINDOW_HEIGHT - 25))
             self.displayer(self.font.render(game_text, True, "#eaff00"), (12, 10))
 
             await asyncio.sleep(0) # required by pygbag; harmless on desktop
@@ -564,9 +581,7 @@ async def main():
                     pygame.quit(); break
             game.draw_background(None, "#000000"); game.displayer(game.extra_text_font.render('Loading...', True, '#ffff00'), (game.WINDOW_WIDTH // 2, game.WINDOW_HEIGHT // 2))
             game.reset()
-            if not game.IS_WEB:
-                current_time = pygame.time.get_ticks()
-                while not pygame.time.get_ticks() - current_time >= 500: pass
+            pygame.time.wait(500)
             await asyncio.sleep(0.5)
 
 asyncio.run(main())
